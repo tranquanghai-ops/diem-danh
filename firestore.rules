@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function googleUser() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+    function owner(room) { return signedIn() && get(/databases/$(database)/documents/rooms/$(room)).data.ownerUid == request.auth.uid; }
+    match /rooms/{room} {
+      // A random 192-bit invitation ID grants participation. Room enumeration is restricted.
+      allow get: if signedIn() && room.matches('^[a-f0-9]{48}$');
+      allow list: if googleUser() && resource.data.ownerUid == request.auth.uid;
+      allow create: if googleUser() && room.matches('^[a-f0-9]{48}$')
+        && request.resource.data.keys().hasAll(['ownerUid','createdAt'])
+        && request.resource.data.keys().hasOnly(['ownerUid','createdAt'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+      match /days/{day}/attendance/{mssv} {
+        function accessible() {
+          return signedIn() && exists(/databases/$(database)/documents/rooms/$(room))
+            && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+        }
+        allow read: if accessible();
+        allow create: if accessible()
+          && mssv.matches('^[A-Za-z0-9_-]{1,64}$')
+          && request.resource.data.keys().hasAll(['mssv','scannedAt','source','requestId','uid','createdAt'])
+          && request.resource.data.keys().hasOnly(['mssv','scannedAt','source','requestId','uid','createdAt'])
+          && request.resource.data.mssv == mssv
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.source in ['camera','manual']
+          && request.resource.data.requestId is string && request.resource.data.requestId.size() == 36
+          && request.resource.data.scannedAt is string && request.resource.data.scannedAt.size() <= 32
+          && request.resource.data.createdAt == request.time;
+        // Immutable scan records: duplicate attempts cannot replace the original timestamp or operator.
+        allow update: if false;
+        allow delete: if accessible() && owner(room);
+      }
+    }
+  }
+}
