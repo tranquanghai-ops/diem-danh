@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>Quản lý điểm danh V2.1</title>
+  <style>
+    :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#2563eb;--success:#16a34a;--danger:#dc2626}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .app{max-width:850px;margin:auto;padding:16px}header,.row,.buttons{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}
+    h1{font-size:22px;margin:0}h2{font-size:17px;margin:0 0 12px}.version,.note{font-size:12px;color:var(--muted)}
+    .card{margin-top:14px;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
+    .status{padding:14px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe;font-weight:700}.status.ok{background:#ecfdf5;border-color:#bbf7d0;color:#166534}.status.error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+    button,a.button{border:0;border-radius:10px;padding:10px 13px;font:inherit;font-weight:700;text-decoration:none;cursor:pointer;background:#eaf0f8;color:var(--text)}
+    button.primary{background:var(--primary);color:#fff}button.success{background:var(--success);color:#fff}button.danger{background:#fee2e2;color:#991b1b}button:disabled{opacity:.45;cursor:not-allowed}
+    label{display:block;margin:10px 0 5px;font-size:12px;font-weight:700;color:var(--muted)}input,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.stat{padding:12px;border-radius:12px;background:#f8fafc;text-align:center}.stat b{display:block;font-size:24px}
+    .table-wrap{overflow:auto;max-height:430px;border:1px solid var(--line);border-radius:12px;margin-top:10px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;border-bottom:1px solid var(--line);text-align:left}th{position:sticky;top:0;background:#f8fafc}
+    details summary{cursor:pointer;font-weight:700}.buttons{margin-top:12px}@media(max-width:560px){.app{padding:10px}.buttons button,.buttons a{flex:1}.table-wrap{max-height:360px}}
+  </style>
+</head>
+<body>
+<main class="app">
+  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V2.1</span></div><a class="button" href="../">Mở máy quét</a></header>
+
+  <section class="card">
+    <div id="adminStatus" class="status" role="status">Đang kiểm tra cấu hình…</div>
+    <div class="buttons">
+      <button id="loginBtn" class="primary" disabled>Đăng nhập Google</button>
+      <button id="reconnectBtn" disabled>Kết nối lại</button>
+      <button id="shareBtn" class="success" disabled>Lấy link cho SV quét</button>
+    </div>
+    <label for="shareLink">Liên kết dành cho SV phụ trách quét</label>
+    <input id="shareLink" readonly placeholder="Đăng nhập để tạo liên kết">
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Danh sách chung</h2><input id="day" type="date" style="max-width:180px"></div>
+    <div class="stats"><div class="stat"><b id="savedCount">0</b>Đã lưu</div><div class="stat"><b id="pendingCount">0</b>Chờ gửi trên máy này</div></div>
+    <div class="buttons"><button id="excelBtn" class="success" disabled>↓ Excel</button><button id="csvBtn" disabled>↓ CSV</button><button id="jsonBtn" disabled>Sao lưu JSON</button><button id="deleteBtn" class="danger" disabled>Xóa ngày đang xem</button></div>
+    <div class="table-wrap"><table><thead><tr><th>STT</th><th>MSSV</th><th>Thời gian</th><th>Trạng thái</th></tr></thead><tbody id="rows"></tbody></table><p id="empty" class="note" style="text-align:center">Chưa có dữ liệu.</p></div>
+  </section>
+
+  <details class="card" id="setupBox">
+    <summary>Thiết lập Firebase lần đầu</summary>
+    <p class="note">Nếu cấu hình đã được lưu sẵn trong website, mục này không cần sử dụng. Chỉ dán cấu hình Web; không dán Service Account hoặc private key.</p>
+    <label for="config">firebaseConfig</label>
+    <textarea id="config" rows="7" spellcheck="false" placeholder="const firebaseConfig = { apiKey: ... };"></textarea>
+    <div class="buttons"><button id="saveConfigBtn" class="primary">Lưu cấu hình trên trình duyệt</button><button id="localBtn">Xóa kết nối trên máy này</button></div>
+    <p class="note"><a href="https://github.com/tranquanghai-ops/diem-danh/blob/main/FIREBASE-SETUP.md" target="_blank" rel="noopener">Xem hướng dẫn</a></p>
+  </details>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script type="module" src="./admin-ui.mjs?v=2.1"></script>
+</body>
+</html>
