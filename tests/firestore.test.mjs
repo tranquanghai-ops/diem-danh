@@ -65,12 +65,13 @@ test('owner can publish the default scanner room; anonymous users can only read 
  await assertFails(setDoc(doc(a,'public','default'),{room,updatedAt:serverTimestamp()}));
  await assertFails(setDoc(ownerDefault,{room:'b'.repeat(48),updatedAt:serverTimestamp()}));
 });
-test('scanner can upload a compressed card photo, but only owner can view or delete it',async()=>{
+test('scanner can upload and view their own photo; only owner can list or delete it',async()=>{
  const id='12345678-1234-1234-1234-123456789abc';
  const photoRef=db=>doc(db,'rooms',room,'days',day,'unread',id);
  const imageData='data:image/jpeg;base64,'+'A'.repeat(120);
  await assertSucceeds(setDoc(photoRef(a),{imageData,scannerName:'Người quét A',takenAt:'2026-09-07T09:10:00Z',uid:'scannerA',createdAt:serverTimestamp()}));
- await assertFails(getDoc(photoRef(a)));
+ assert.equal((await assertSucceeds(getDoc(photoRef(a)))).data().uid,'scannerA');
+ await assertFails(getDoc(photoRef(b)));
  await assertFails(getDocs(collection(a,'rooms',room,'days',day,'unread')));
  assert.equal((await getDoc(photoRef(owner))).data().scannerName,'Người quét A');
  await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'unread')));

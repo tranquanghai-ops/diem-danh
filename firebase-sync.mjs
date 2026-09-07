@@ -224,10 +224,16 @@ export class FirebaseAttendance {
     if(!scannerName||scannerName.length>80)throw new Error('Tên người quét không hợp lệ.');
     if(typeof imageData!=='string'||!imageData.startsWith('data:image/jpeg;base64,')||imageData.length>450000)throw new Error('Ảnh quá lớn hoặc không hợp lệ.');
     const id=crypto.randomUUID(),takenAt=new Date().toISOString();
-    await this.api.setDoc(this.api.doc(this.db,'rooms',this.room,'days',this.day,'unread',id),{
+    const ref=this.api.doc(this.db,'rooms',this.room,'days',this.day,'unread',id);
+    await this.api.setDoc(ref,{
       imageData,scannerName,takenAt,uid:this.auth.currentUser.uid,createdAt:this.api.serverTimestamp()
     });
+    // Read the saved document back with the same account. Besides confirming the
+    // upload, this guarantees the uploader can review exactly what Firestore stored.
+    const saved=await this.api.getDocFromServer(ref);
+    if(!saved.exists())throw new Error('Ảnh đã gửi nhưng chưa thể mở lại để kiểm tra.');
     this.message='Đã gửi ảnh thẻ cho GV xử lý sau.';this.change();
+    return {id,...saved.data()};
   }
   async resolvePhoto(photoId,mssv){
     if(!this.owner||!this.serverReady)throw new Error('Chỉ tài khoản quản lý có thể xử lý ảnh.');

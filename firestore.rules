@@ -90,7 +90,11 @@ service cloud.firestore {
           && request.resource.data.imageData.size() <= 450000
           && request.resource.data.imageData.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
           && request.resource.data.createdAt == request.time;
-        allow get, list, delete: if accessible() && owner(room);
+        // The uploader may reopen only their own photo to verify image quality.
+        // Listing the queue and deleting/processing photos remain owner-only.
+        allow get: if accessible()
+          && (owner(room) || resource.data.uid == request.auth.uid);
+        allow list, delete: if accessible() && owner(room);
         allow update: if false;
       }
     }
