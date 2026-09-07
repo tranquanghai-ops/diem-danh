@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.5</title>
+  <title>Điểm danh Barcode - MSSV V2.6</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -62,7 +62,7 @@
     .scanner-card{padding:12px}
     .scanner-wrap{aspect-ratio:16/9;max-height:340px}
     .scan-frame{top:32%;height:30%}
-    .scan-actions{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:6px}
+    .scan-actions{display:grid;grid-template-columns:1.45fr 1fr;gap:6px}
     .scan-actions button{padding:12px 6px;font-size:14px}
     .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
     .stat{text-align:center;padding:8px 4px;background:#f8fafc;border:0}
@@ -98,6 +98,7 @@
     <div class="buttons scan-actions">
       <button class="primary" id="startBtn">▶ Bắt đầu quét</button>
       <button class="secondary" id="stopBtn" disabled>■ Dừng</button>
+      <button class="secondary" id="ocrBtn">▣ Đọc chữ MSSV</button>
       <button class="secondary" id="manualBtn">Nhập MSSV</button>
     </div>
     <div class="stats">
@@ -128,7 +129,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V2.5</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V2.6</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -157,7 +158,10 @@
     lastDecodedAt: 0,
     candidateDecoded: '',
     candidateCount: 0,
-    candidateAt: 0
+    candidateAt: 0,
+    nativeDetector: null,
+    nativeTimer: null,
+    nativeBusy: false
   };
 
   const $ = id => document.getElementById(id);
@@ -297,10 +301,11 @@
       state.reader.possibleFormats=[ZXingBrowser.BarcodeFormat.CODE_128];
       state.scanning=true;
       const controls=await state.reader.decodeFromStream(stream, video, result=>{
-        if(request===cameraRequest && state.scanning && result) confirmCameraResult(result);
+        if(request===cameraRequest && state.scanning && result && result.getBarcodeFormat()===ZXingBrowser.BarcodeFormat.CODE_128)confirmCameraValue(result.getText());
       });
       if(request!==cameraRequest){ controls.stop(); releaseStream(stream); return; }
       state.controls=controls;
+      void startNativeBarcodeDetector(request);
       cameraSelect.disabled=false;
       setStatus('', 'Camera sau đang quét.', 'Đưa mã vạch trên thẻ vào khung.');
       await listCameras();
@@ -320,9 +325,27 @@
     }
   }
 
-  function confirmCameraResult(result){
-    if(result.getBarcodeFormat()!==ZXingBrowser.BarcodeFormat.CODE_128)return;
-    const value=normalizeMssv(result.getText()),now=Date.now();
+  async function startNativeBarcodeDetector(request){
+    if(!('BarcodeDetector' in window))return;
+    try{
+      const supported=await BarcodeDetector.getSupportedFormats();
+      if(!supported.includes('code_128'))return;
+      state.nativeDetector=new BarcodeDetector({formats:['code_128']});
+      const detect=async()=>{
+        if(request!==cameraRequest||!state.scanning||!state.nativeDetector)return;
+        if(!state.nativeBusy&&video.readyState>=2){
+          state.nativeBusy=true;
+          try{const codes=await state.nativeDetector.detect(video);if(codes[0]?.rawValue)confirmCameraValue(codes[0].rawValue);}catch(e){}
+          finally{state.nativeBusy=false;}
+        }
+        state.nativeTimer=setTimeout(detect,220);
+      };
+      detect();
+    }catch(e){}
+  }
+
+  function confirmCameraValue(raw){
+    const value=normalizeMssv(raw),now=Date.now();
     if(!validStudentId(value)){
       setStatus('warn','Mã đọc được không phải MSSV.',value.length>12?'Đã bỏ qua dãy số thẻ dài.':'MSSV phải gồm 8–12 chữ hoặc số.');
       return;
@@ -336,6 +359,7 @@
   }
   function stopScanner(){
     cameraRequest++;
+    clearTimeout(state.nativeTimer);state.nativeTimer=null;state.nativeDetector=null;state.nativeBusy=false;
     try{ state.controls?.stop(); }catch(e){}
     state.controls=null;
     releaseStream(state.stream); state.stream=null;
@@ -434,6 +458,50 @@
   $('saveManual').onclick=()=>{ void unlockAudio(); const v=$('manualMssv').value.trim(); if(!v){alert('Vui lòng nhập MSSV.');return;} handleScan(v,'manual'); $('manualDialog').close(); };
   $('manualMssv').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveManual').click();});
 
+  let ocrWorker=null,ocrLoading=null;
+  function loadScript(src){
+    return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Không tải được bộ OCR.'));document.head.appendChild(s);});
+  }
+  async function getOcrWorker(){
+    if(ocrWorker)return ocrWorker;
+    if(!ocrLoading)ocrLoading=(async()=>{
+      if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+      const worker=await Tesseract.createWorker('eng',1,{logger:m=>{
+        if(m.status==='recognizing text')setStatus('', 'Đang đọc chữ MSSV…',Math.round((m.progress||0)*100)+'%');
+      }});
+      await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:',tessedit_pageseg_mode:'7'});
+      return worker;
+    })();
+    try{ocrWorker=await ocrLoading;return ocrWorker;}catch(e){ocrLoading=null;throw e;}
+  }
+  function captureScanFrame(){
+    if(!state.scanning||video.readyState<2)throw new Error('Hãy bắt đầu camera trước.');
+    const frame=document.querySelector('.scan-frame').getBoundingClientRect(),box=video.getBoundingClientRect();
+    const vw=video.videoWidth,vh=video.videoHeight,scale=Math.max(box.width/vw,box.height/vh);
+    const rw=vw*scale,rh=vh*scale,offsetX=(rw-box.width)/2,offsetY=(rh-box.height)/2;
+    const sx=Math.max(0,(frame.left-box.left+offsetX)/scale),sy=Math.max(0,(frame.top-box.top+offsetY)/scale);
+    const sw=Math.min(vw-sx,frame.width/scale),sh=Math.min(vh-sy,frame.height/scale);
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(sw*2));canvas.height=Math.max(1,Math.round(sh*2));
+    const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.8)';ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+    return canvas;
+  }
+  $('ocrBtn').onclick=async()=>{
+    if(!requireScannerName())return;
+    $('ocrBtn').disabled=true;
+    try{
+      setStatus('', 'Đang chuẩn bị đọc chữ…','Đặt riêng dòng MSSV và dãy ký tự vào khung trắng.');
+      const canvas=captureScanFrame(),worker=await getOcrWorker(),result=await worker.recognize(canvas);
+      const text=String(result.data.text||'').toUpperCase().replace(/[^A-Z0-9: ]/g,' ');
+      const labelled=text.match(/MSSV\s*:?\s*([A-Z0-9]{8,12})/);
+      const candidates=text.match(/[A-Z0-9]{8,12}/g)||[];
+      const mssv=normalizeMssv(labelled?.[1]||candidates.find(validStudentId)||'');
+      if(!validStudentId(mssv))throw new Error('Không đọc rõ MSSV. Đưa dòng MSSV vào giữa khung, giữ máy thẳng và thử lại.');
+      if(confirm('Ứng dụng đọc được MSSV: '+mssv+'\n\nXác nhận ghi điểm danh?'))handleScan(mssv,'camera');
+      else setStatus('warn','Đã hủy kết quả OCR.','Hãy căn lại dòng MSSV rồi đọc lại.');
+    }catch(e){setStatus('error','Không đọc được chữ MSSV.',e.message||'Vui lòng thử lại.');}
+    finally{$('ocrBtn').disabled=false;}
+  };
+
   function rowsForExport(){
     const b=currentBatch();
     return (b?.attendance||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,Người_quét:r.scannerName||'Không ghi nhận',Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
@@ -460,6 +528,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.5"></script>
+<script type="module" src="./cloud-ui.mjs?v=2.6"></script>
 </body>
 </html>
