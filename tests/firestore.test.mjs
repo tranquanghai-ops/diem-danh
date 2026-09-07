@@ -30,8 +30,9 @@ test('unauthenticated user cannot read, write, or enumerate',async()=>{
  await assertFails(getDoc(ref(guest,'00123')));await assertFails(getDoc(doc(guest,'rooms',room)));
  await assertFails(setDoc(ref(guest,'234'),payload('guest','234','a'.repeat(36))));
 });
-test('participants can read shared list, but cannot enumerate rooms or delete',async()=>{
- await assertSucceeds(getDocs(collection(b,'rooms',room,'days',day,'attendance')));
+test('participants cannot download the class list; only its owner can enumerate it',async()=>{
+ await assertFails(getDocs(collection(b,'rooms',room,'days',day,'attendance')));
+ await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'attendance')));
  await assertFails(getDocs(collection(b,'rooms')));await assertFails(deleteDoc(ref(b,'00123')));
  await assertSucceeds(getDocs(query(collection(owner,'rooms'),where('ownerUid','==','teacher'))));
 });

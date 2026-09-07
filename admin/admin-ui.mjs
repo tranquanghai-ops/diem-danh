@@ -1,9 +1,10 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=2.2';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 
 const $=id=>document.getElementById(id);
 const cloud=new FirebaseAttendance({change:render,scannerUrl:'../'});
+let editingEvent=false;
 
 function time(iso){
   try{return new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(iso));}
@@ -14,6 +15,9 @@ function render(){
   $('adminStatus').textContent=cloud.message;
   $('adminStatus').className='status'+(cloud.connected?' ok':'');
   $('day').value=cloud.day;$('day').disabled=!cloud.connected;
+  if(!editingEvent)$('eventName').value=cloud.eventName||'';
+  $('eventName').disabled=!cloud.owner||!cloud.serverReady;
+  $('saveEventBtn').disabled=!cloud.owner||!cloud.serverReady;
   $('loginBtn').disabled=!cloud.auth||cloud.owner;
   $('loginBtn').textContent=cloud.owner?'Đã đăng nhập tài khoản quản lý':'Đăng nhập Google';
   $('reconnectBtn').disabled=!cloud.settings;
@@ -32,10 +36,14 @@ $('saveConfigBtn').onclick=action(()=>cloud.configure($('config').value));
 $('loginBtn').onclick=action(()=>cloud.login());
 $('reconnectBtn').onclick=action(async()=>{if(!cloud.connected)await cloud.restore();else{cloud.subscribe();await cloud.flush();}});
 $('shareBtn').onclick=action(async()=>{
+  await cloud.publishDefault();
   const link=cloud.shareLink();$('shareLink').value=link;
   try{await navigator.clipboard.writeText(link);cloud.message='Đã sao chép link dành cho SV.';}catch{ $('shareLink').focus();$('shareLink').select();cloud.message='Hãy sao chép link đang hiển thị.';}
 });
-$('day').onchange=action(()=>cloud.setDay($('day').value));
+$('day').onchange=action(()=>{editingEvent=false;cloud.setDay($('day').value);});
+$('eventName').oninput=()=>{editingEvent=true;};
+$('saveEventBtn').onclick=action(async()=>{await cloud.saveEventName($('eventName').value);editingEvent=false;});
+$('eventName').onkeydown=e=>{if(e.key==='Enter'&&!$('saveEventBtn').disabled)$('saveEventBtn').click();};
 $('localBtn').onclick=action(()=>cloud.disconnect());
 $('deleteBtn').onclick=action(()=>cloud.clearVisible());
 

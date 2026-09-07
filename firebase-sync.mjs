@@ -3,7 +3,7 @@ const SETTINGS='attendance_firebase_v1';
 const sdkBase='https://www.gstatic.com/firebasejs/12.18.0/';
 export class FirebaseAttendance {
   constructor({change=()=>{},notice=()=>{},scannerUrl='./'}={}){
-    this.change=change;this.notice=notice;this.rows=[];this.day=vietnamDay();this.scans=0;this.duplicates=0;
+    this.change=change;this.notice=notice;this.rows=[];this.day=vietnamDay();this.eventName='';this.scans=0;this.duplicates=0;
     this.connected=false;this.enabled=false;this.serverReady=false;this.message='Chưa kết nối Firebase';
     this.scannerUrl=new URL(scannerUrl,location.href);this.scannerUrl.hash='';
     try{this.settings=JSON.parse(localStorage.getItem(SETTINGS)||'null');}catch{this.settings=null;}
@@ -44,7 +44,7 @@ export class FirebaseAttendance {
     const a=this.api;
     // The popup opens directly from the user's tap; SDK has already been loaded.
     const result=await a.signInWithPopup(this.auth,new a.GoogleAuthProvider());
-    if(this.room){await this.join(this.room);return;}
+    if(this.room){await this.join(this.room);await this.publishDefault();return;}
     const owned=await a.getDocs(a.query(a.collection(this.db,'rooms'),a.where('ownerUid','==',result.user.uid),a.limit(1)));
     let room=owned.docs[0]?.id;
     if(!room){
@@ -52,6 +52,22 @@ export class FirebaseAttendance {
       await a.setDoc(a.doc(this.db,'rooms',room),{ownerUid:result.user.uid,createdAt:a.serverTimestamp()});
     }
     await this.join(room);
+    await this.publishDefault();
+  }
+  async connectDefault(config){
+    await this.prepare(config);
+    if(!this.auth.currentUser)await this.api.signInAnonymously(this.auth);
+    const target=await this.api.getDocFromServer(this.api.doc(this.db,'public','default'));
+    if(!target.exists())throw new Error('GV chưa kích hoạt điểm quét mặc định.');
+    const room=target.data().room;
+    if(!/^[a-f0-9]{48}$/.test(room))throw new Error('Điểm quét mặc định không hợp lệ.');
+    await this.join(room);
+  }
+  async publishDefault(){
+    if(!this.owner)throw new Error('Chỉ tài khoản quản lý có thể kích hoạt link mặc định.');
+    await this.api.setDoc(this.api.doc(this.db,'public','default'),{
+      room:this.room,updatedAt:this.api.serverTimestamp()
+    });
   }
   async join(room){
     if(!/^[a-f0-9]{48}$/.test(room))throw new Error('Liên kết tham gia không hợp lệ.');
@@ -65,19 +81,30 @@ export class FirebaseAttendance {
     this.connected=true;this.message='Đã kết nối danh sách chung';this.subscribe();void this.flush();
   }
   subscribe(){
-    this.unsubscribe?.();this.rows=[];this.serverReady=false;
+    this.unsubscribe?.();this.unsubscribe=null;this.unsubscribeDay?.();this.rows=[];this.eventName='';this.serverReady=false;
     const selected=this.day;
     const cacheKey='attendance_cache_v1:'+this.config.projectId+':'+this.room+':'+selected;
-    try{this.rows=JSON.parse(localStorage.getItem(cacheKey)||'[]');}catch{}
-    this.unsubscribe=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'days',selected,'attendance'),{includeMetadataChanges:true},snapshot=>{
+    if(this.owner){
+      try{this.rows=JSON.parse(localStorage.getItem(cacheKey)||'[]');}catch{}
+      this.unsubscribe=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'days',selected,'attendance'),{includeMetadataChanges:true},snapshot=>{
+        if(selected!==this.day)return;
+        if(snapshot.metadata.fromCache && snapshot.empty && this.rows.length){this.change();return;}
+        this.rows=snapshot.docs.map(d=>({...d.data(),time:d.data().scannedAt,status:'Đã lưu trực tuyến'})).sort((a,b)=>a.time.localeCompare(b.time));
+        this.serverReady=!snapshot.metadata.fromCache;
+        this.message=this.serverReady?'Đã đồng bộ danh sách chung':'Đang kết nối — hiển thị dữ liệu đã tải';
+        try{localStorage.setItem(cacheKey,JSON.stringify(this.rows));}catch{}
+        this.change();
+      },error=>{this.serverReady=false;this.error(error);});
+    }else{
+      // Scanner accounts can add/check a specific code, but cannot download the class list.
+      try{localStorage.removeItem(cacheKey);}catch{}
+      this.serverReady=true;this.message='Đã kết nối điểm quét chung';
+    }
+    this.unsubscribeDay=this.api.onSnapshot(this.api.doc(this.db,'rooms',this.room,'days',selected),snapshot=>{
       if(selected!==this.day)return;
-      if(snapshot.metadata.fromCache && snapshot.empty && this.rows.length){this.change();return;}
-      this.rows=snapshot.docs.map(d=>({...d.data(),time:d.data().scannedAt,status:'Đã lưu trực tuyến'})).sort((a,b)=>a.time.localeCompare(b.time));
-      this.serverReady=!snapshot.metadata.fromCache;
-      this.message=this.serverReady?'Đã đồng bộ danh sách chung':'Đang kết nối — hiển thị dữ liệu đã tải';
-      try{localStorage.setItem(cacheKey,JSON.stringify(this.rows));}catch{}
+      this.eventName=snapshot.exists()?(snapshot.data().eventName||''):'';
       this.change();
-    },error=>{this.serverReady=false;this.error(error);});
+    },error=>this.error(error));
     this.change();
   }
   setDay(day){
@@ -146,7 +173,7 @@ export class FirebaseAttendance {
   }
   shareLink(){
     if(!this.connected)throw new Error('Kết nối danh sách trước khi chia sẻ.');
-    return this.scannerUrl.href+'#join='+encodeURIComponent(JSON.stringify({config:this.config,room:this.room}));
+    return this.scannerUrl.href;
   }
   async acceptLink(link){
     const url=new URL(link);const params=new URLSearchParams(url.hash.slice(1));
@@ -172,6 +199,16 @@ export class FirebaseAttendance {
       rows.slice(start,start+400).forEach(r=>batch.delete(this.api.doc(this.db,'rooms',this.room,'days',this.day,'attendance',r.mssv)));
       await batch.commit();
     }
+  }
+  async saveEventName(name){
+    if(!this.owner||!this.serverReady)throw new Error('Chỉ tài khoản quản lý có thể sửa tên sự kiện khi đang kết nối.');
+    name=String(name||'').trim();
+    if(!name)throw new Error('Vui lòng nhập tên sự kiện.');
+    if(name.length>100)throw new Error('Tên sự kiện tối đa 100 ký tự.');
+    await this.api.setDoc(this.api.doc(this.db,'rooms',this.room,'days',this.day),{
+      eventName:name,updatedAt:this.api.serverTimestamp()
+    });
+    this.eventName=name;this.message='Đã lưu tên sự kiện.';this.change();
   }
   disconnect(){
     if(this.outbox?.entries().length)throw new Error('Còn lượt chờ gửi. Kết nối lại để gửi hết trước khi chuyển về lưu trên máy.');
