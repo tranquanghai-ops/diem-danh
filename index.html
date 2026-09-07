@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.0</title>
+  <title>Điểm danh Barcode - MSSV V2.1</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -77,7 +77,7 @@
 </head>
 <body>
 <div class="app">
-  <header><h1>Điểm danh sinh viên</h1><span class="subtitle">V2.0</span></header>
+  <header><h1>Điểm danh sinh viên</h1><span class="subtitle">V2.1</span></header>
 
   <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">
     <div class="status-title">Sẵn sàng điểm danh</div>
@@ -103,7 +103,6 @@
   </section>
 
   <section class="card list-card">
-    <div id="cloudDayRow" class="row" hidden><label for="cloudDay">Ngày điểm danh</label><input type="date" id="cloudDay" style="max-width:180px" /></div>
     <div class="row between"><h2>Danh sách điểm danh</h2><button class="success" id="excelBtn">↓ Excel</button></div>
     <div class="table-wrap">
       <table>
@@ -115,42 +114,14 @@
     <p id="syncInfo" class="note" role="status">Đang lưu trên điện thoại này • Chưa kết nối Firebase</p>
   </section>
 
-  <details class="card settings" id="cloudSettings">
-    <summary>Đồng bộ nhiều điện thoại</summary>
-    <p id="cloudMessage" class="note" role="status">Kết nối Firebase một lần để dùng danh sách chung.</p>
-    <div class="buttons">
-      <button id="googleLoginBtn" class="primary" disabled>Đăng nhập Google (quản lý)</button>
-      <button id="retrySyncBtn" class="secondary" disabled>Kết nối lại</button>
-      <button id="shareCloudBtn" class="success" disabled>Lấy link cho SV quét</button>
-    </div>
-    <label for="joinLink" style="margin-top:12px">Liên kết tham gia</label>
-    <input id="joinLink" placeholder="Dán liên kết do giảng viên gửi" autocomplete="off" />
-    <div class="buttons"><button id="joinCloudBtn" class="secondary">Tham gia</button></div>
-    <details style="margin-top:16px">
-      <summary>Thiết lập Firebase lần đầu</summary>
-      <p class="note"><a href="https://github.com/tranquanghai-ops/diem-danh/blob/main/FIREBASE-SETUP.md" target="_blank" rel="noopener">Hướng dẫn thiết lập</a> · <a href="./firestore.rules" target="_blank" rel="noopener">Quy tắc Firestore</a></p>
-      <label for="firebaseConfig">Dán đoạn firebaseConfig từ Firebase Console</label>
-      <textarea id="firebaseConfig" rows="6" spellcheck="false" placeholder="const firebaseConfig = { apiKey: ... };" style="width:100%;font:inherit;border:1px solid #cbd5e1;border-radius:10px;padding:10px"></textarea>
-      <div class="buttons"><button id="saveFirebaseBtn" class="primary">Lưu cấu hình</button><button id="localModeBtn" class="secondary">Chuyển về lưu trên máy</button></div>
-    </details>
-  </details>
-
   <details class="card settings">
-    <summary>Cài đặt và dữ liệu</summary>
+    <summary>Tùy chọn máy quét</summary>
     <label for="cameraSelect">Camera sau</label>
     <select id="cameraSelect" aria-label="Chọn camera sau"></select>
     <div class="buttons"><button class="secondary" id="testFeedbackBtn">🔊 Thử tiếng / rung</button></div>
     <p id="feedbackHint" class="note" role="status"></p>
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
-    <div class="buttons">
-      <button class="secondary" id="csvBtn">↓ CSV</button>
-      <button class="secondary" id="backupBtn">Sao lưu JSON</button>
-      <button class="secondary" id="restoreBtn">Khôi phục</button>
-      <button class="danger" id="clearBtn">Xóa danh sách</button>
-    </div>
-    <input id="restoreFile" type="file" accept="application/json,.json" hidden />
-    <p class="note">Xuất Excel hoặc sao lưu trước khi xóa danh sách để điểm danh buổi tiếp theo.</p>
   </details>
 </div>
 
@@ -420,13 +391,6 @@
     const b=currentBatch();
     return (b?.attendance||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
   }
-  $('csvBtn').onclick=()=>{
-    const rows=rowsForExport(); const header=['STT','MSSV','Thời gian','Trạng thái'];
-    const lines=[header,...rows.map(r=>[r.STT,r.MSSV,r.Thời_gian,r.Trạng_thái])].map(a=>a.map(csvCell).join(','));
-    const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}); downloadBlob(blob,'diem_danh_'+(window.attendanceCloud?.enabled?window.attendanceCloud.day:new Date().toLocaleDateString('sv-SE'))+'.csv');
-  };
-  function csvCell(v){ const s=String(v??''); return '"'+s.replace(/"/g,'""')+'"'; }
-
   $('excelBtn').onclick=()=>{
     if(!window.XLSX){alert('Không tải được thư viện Excel. Kiểm tra Internet rồi thử lại.');return;}
     const ws=XLSX.utils.json_to_sheet(rowsForExport());
@@ -434,28 +398,6 @@
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Diem danh');
     XLSX.writeFile(wb,'diem_danh_'+(window.attendanceCloud?.enabled?window.attendanceCloud.day:new Date().toLocaleDateString('sv-SE'))+'.xlsx');
   };
-  $('backupBtn').onclick=()=>{
-    const payload={app:'Diem danh Barcode - MSSV',version:2,exportedAt:nowIso(),data:currentBatch(),pending:window.attendanceCloud?.outbox?.entries()||[],localData:state.data};
-    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); downloadBlob(blob,'backup_diem_danh_'+new Date().toISOString().slice(0,10)+'.json');
-  };
-  $('restoreBtn').onclick=()=>{ if(window.attendanceCloud?.enabled){alert('Chuyển về lưu trên máy để khôi phục JSON. Thao tác này không thay thế dữ liệu trực tuyến.');return;} $('restoreFile').click(); };
-  $('restoreFile').onchange=async e=>{
-    const file=e.target.files?.[0]; if(!file)return;
-    try{
-      const obj=JSON.parse(await file.text()); const d=obj.data||obj;
-      const restored = normalizeData(d);
-      if(!confirm('Khôi phục dữ liệu sẽ thay thế dữ liệu hiện tại trên thiết bị. Tiếp tục?')) return;
-      await stopScanner(); state.data=restored; state.lastDecoded=''; state.lastDecodedAt=0; saveData(); render(); setStatus('success','Khôi phục thành công.','');
-    }catch(err){alert('Không thể khôi phục: '+err.message);} finally{e.target.value='';}
-  };
-  $('clearBtn').onclick=()=>{
-    if(window.attendanceCloud?.enabled){stopScanner();window.attendanceCloud.clearVisible().catch(e=>setStatus('error','Chưa xóa dữ liệu.',e.message));return;}
-    const b=currentBatch(); if(!b)return; if(!confirm('Xóa toàn bộ danh sách điểm danh? Hãy xuất Excel hoặc sao lưu trước khi xóa.'))return;
-    state.lastDecoded=''; state.lastDecodedAt=0;
-    b.attendance=[]; b.scanCount=0; b.duplicateCount=0; saveData(); render(); setStatus('warn','Đã xóa toàn bộ lượt điểm danh.');
-  };
-  function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); }
-
   $('secureHint').textContent=(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')?'✓ Sẵn sàng cho camera':'⚠ Cần HTTPS để dùng camera';
   window.addEventListener('beforeunload',()=>stopScanner());
   window.addEventListener('pagehide',()=>stopScanner());
@@ -466,7 +408,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.0"></script>
+<script type="module" src="./cloud-ui.mjs?v=2.1"></script>
 </body>
 </html>
-
