@@ -28,19 +28,17 @@ Quy tắc cho phép người có liên kết tham gia đọc và thêm điểm d
 tranquanghai-ops.github.io
 ```
 
-## 4. Lấy cấu hình Web
+## 4. Cấu hình Web
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Sao chép đoạn `const firebaseConfig = { ... };`.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V2.1.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang điểm danh](https://tranquanghai-ops.github.io/diem-danh/), kiểm tra **V2.0**.
-- Mở **Đồng bộ nhiều điện thoại → Thiết lập Firebase lần đầu**.
-- Dán đoạn `firebaseConfig`, nhấn **Lưu cấu hình**.
-- Nhấn **Đăng nhập Google (quản lý)**, chọn tài khoản giảng viên. Danh sách dùng chung được thiết lập tự động, không có bước tạo đợt.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V2.1**.
+- Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Danh sách dùng chung được thiết lập tự động, không có bước tạo đợt và không cần dán lại `firebaseConfig`.
 - Khi thấy **Đã đồng bộ danh sách chung**, nhấn **Lấy link cho SV quét** và gửi liên kết cho các SV phụ trách.
 - Trên điện thoại SV, mở liên kết bằng Chrome. Trang tự ghi nhớ kết nối; mỗi lần sau chỉ cần mở lại trang.
 - Khi đổi điện thoại quản lý, mở cùng liên kết và đăng nhập đúng tài khoản Google ban đầu.
