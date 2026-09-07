@@ -1,6 +1,6 @@
-# Kết nối Firebase cho Điểm danh V2.0
+# Kết nối Firebase cho Điểm danh V2.2
 
-Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV mở liên kết tham gia để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
+Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV chỉ cần mở `https://tranquanghai-ops.github.io/diem-danh/` để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
 ## 1. Tạo dự án miễn phí
 
@@ -32,20 +32,21 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V2.1.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V2.2.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V2.1**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V2.2**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Danh sách dùng chung được thiết lập tự động, không có bước tạo đợt và không cần dán lại `firebaseConfig`.
-- Khi thấy **Đã đồng bộ danh sách chung**, nhấn **Lấy link cho SV quét** và gửi liên kết cho các SV phụ trách.
-- Trên điện thoại SV, mở liên kết bằng Chrome. Trang tự ghi nhớ kết nối; mỗi lần sau chỉ cần mở lại trang.
+- Khi thấy **Đã đồng bộ danh sách chung**, hệ thống đã kích hoạt trang quét mặc định. Nút **Lấy link cho SV quét** sao chép địa chỉ ngắn, không chứa mã cấu hình.
+- Trên điện thoại SV, mở `https://tranquanghai-ops.github.io/diem-danh/` bằng Chrome. Trang tự tìm danh sách chung và ghi nhớ kết nối.
 - Khi đổi điện thoại quản lý, mở cùng liên kết và đăng nhập đúng tài khoản Google ban đầu.
 
 ## Cách dùng mỗi ngày
 
 - Danh sách mặc định theo **ngày tại Việt Nam (UTC+7)**. Mỗi MSSV được ghi một lần trong ngày; ngày tiếp theo có thể điểm danh lại, không cần tạo đợt.
+- Trang quản lý cho phép đặt một **tên sự kiện riêng cho từng ngày**; tên được lưu trên Firebase và chỉ tài khoản quản lý được sửa.
 - Các máy phải dùng cùng liên kết và cùng ngày. Có thể chọn ngày cũ để xem/xuất Excel; việc quét chỉ dành cho ngày hôm nay.
 - Nếu để trang qua nửa đêm hoặc đang xem ngày cũ, lượt quét mới sẽ tự chuyển về danh sách hôm nay.
 - **Đã nhận mã — chờ gửi**: mã đã được lưu vào hàng đợi của điện thoại, chưa được máy chủ xác nhận.
