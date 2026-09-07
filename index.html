@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.4</title>
+  <title>Điểm danh Barcode - MSSV V2.5</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -128,7 +128,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V2.4</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V2.5</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -154,7 +154,10 @@
     stream: null,
     scanning: false,
     lastDecoded: '',
-    lastDecodedAt: 0
+    lastDecodedAt: 0,
+    candidateDecoded: '',
+    candidateCount: 0,
+    candidateAt: 0
   };
 
   const $ = id => document.getElementById(id);
@@ -200,9 +203,10 @@
   function fmtTime(iso){ try { return new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium'}).format(new Date(iso)); } catch { return iso; } }
   function currentBatch(){ const c=window.attendanceCloud; return c?.enabled ? {attendance:c.visibleRows(),scanCount:c.scans,duplicateCount:c.duplicates} : state.data; }
   function normalizeMssv(value){
-    // Barcode may contain only digits in the user's sample. Keep the decoded payload and strip surrounding whitespace.
-    return String(value ?? '').trim();
+    // Standard IDs are numeric; advanced-program IDs may also contain letters.
+    return String(value ?? '').trim().toUpperCase();
   }
+  function validStudentId(value){return /^(?=.{8,12}$)(?=.*\d)[A-Z0-9]+$/.test(value);}
 
   function setStatus(type, title, detail){
     statusBox.className = 'status' + (type ? ' ' + type : '');
@@ -252,8 +256,8 @@
     let firstError;
     try{
       return await media.getUserMedia({audio:false,video:deviceId
-        ? {deviceId:{exact:deviceId},facingMode:{exact:'environment'}}
-        : {facingMode:{exact:'environment'}}});
+        ? {deviceId:{exact:deviceId},facingMode:{exact:'environment'},width:{ideal:1920},height:{ideal:1080}}
+        : {facingMode:{exact:'environment'},width:{ideal:1920},height:{ideal:1080}}});
     }catch(e){
       firstError=e;
       if(!['OverconstrainedError','NotFoundError','DevicesNotFoundError'].includes(e.name)) throw e;
@@ -288,9 +292,12 @@
       state.stream=stream;
       video.muted=true; video.setAttribute('playsinline','');
       state.reader=new ZXingBrowser.BrowserMultiFormatReader();
+      // Student cards use CODE 128. Restricting the decoder prevents false matches
+      // against other one-dimensional barcode formats.
+      state.reader.possibleFormats=[ZXingBrowser.BarcodeFormat.CODE_128];
       state.scanning=true;
       const controls=await state.reader.decodeFromStream(stream, video, result=>{
-        if(request===cameraRequest && state.scanning && result) handleScan(result.getText(),'camera');
+        if(request===cameraRequest && state.scanning && result) confirmCameraResult(result);
       });
       if(request!==cameraRequest){ controls.stop(); releaseStream(stream); return; }
       state.controls=controls;
@@ -312,6 +319,21 @@
       setStatus('error','Không mở được camera sau.',(details[e.name]||e.message||'Vui lòng thử lại.')+' ['+(e.name||'Error')+']');
     }
   }
+
+  function confirmCameraResult(result){
+    if(result.getBarcodeFormat()!==ZXingBrowser.BarcodeFormat.CODE_128)return;
+    const value=normalizeMssv(result.getText()),now=Date.now();
+    if(!validStudentId(value)){
+      setStatus('warn','Mã đọc được không phải MSSV.',value.length>12?'Đã bỏ qua dãy số thẻ dài.':'MSSV phải gồm 8–12 chữ hoặc số.');
+      return;
+    }
+    if(value===state.candidateDecoded && now-state.candidateAt<1800)state.candidateCount++;
+    else{state.candidateDecoded=value;state.candidateCount=1;}
+    state.candidateAt=now;
+    if(state.candidateCount<2){setStatus('', 'Đang xác nhận MSSV…',value);return;}
+    state.candidateDecoded='';state.candidateCount=0;
+    handleScan(value,'camera');
+  }
   function stopScanner(){
     cameraRequest++;
     try{ state.controls?.stop(); }catch(e){}
@@ -325,6 +347,9 @@
   function handleScan(raw, source){
     const operator=requireScannerName();if(!operator)return;
     const mssv=normalizeMssv(raw); if(!mssv) return;
+    if(!validStudentId(mssv)){
+      setStatus('error','MSSV không hợp lệ.','MSSV phải gồm 8–12 chữ hoặc số.');return;
+    }
     // Avoid repeated decoder callbacks for the same physical barcode for a short window.
     const now=Date.now();
     if(mssv===state.lastDecoded && now-state.lastDecodedAt<900) return;
@@ -435,6 +460,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.4"></script>
+<script type="module" src="./cloud-ui.mjs?v=2.5"></script>
 </body>
 </html>
