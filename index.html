@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.3</title>
+  <title>Điểm danh Barcode - MSSV V2.4</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -108,7 +108,7 @@
   </section>
 
   <section class="card list-card">
-    <div class="row between"><h2>Danh sách điểm danh</h2><button class="success" id="excelBtn">↓ Excel</button></div>
+    <div class="row between"><h2 id="attendanceTitle">Danh sách điểm danh</h2><button class="success" id="excelBtn">↓ Excel</button></div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>STT</th><th>MSSV</th><th>Thời gian</th><th>Trạng thái</th></tr></thead>
@@ -128,7 +128,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V2.3</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V2.4</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -213,6 +213,8 @@
   function render(){
     const batch = currentBatch();
     const rows = batch?.attendance || [];
+    const eventName=window.attendanceCloud?.eventName||'';
+    $('attendanceTitle').textContent=eventName?'Danh sách điểm danh – '+eventName:'Danh sách điểm danh';
     $('countAttendance').textContent = rows.filter(r=>r.status!=='Chờ gửi').length;
     $('countScans').textContent = batch?.scanCount || 0;
     $('countDuplicates').textContent = batch?.duplicateCount || 0;
@@ -411,12 +413,17 @@
     const b=currentBatch();
     return (b?.attendance||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,Người_quét:r.scannerName||'Không ghi nhận',Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
   }
+  function safeFilename(value){
+    return String(value||'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,80)||'diem_danh';
+  }
   $('excelBtn').onclick=()=>{
     if(!window.XLSX){alert('Không tải được thư viện Excel. Kiểm tra Internet rồi thử lại.');return;}
     const ws=XLSX.utils.json_to_sheet(rowsForExport());
     ws['!cols']=[{wch:7},{wch:18},{wch:28},{wch:22},{wch:14}];
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Diem danh');
-    XLSX.writeFile(wb,'diem_danh_'+(window.attendanceCloud?.enabled?window.attendanceCloud.day:new Date().toLocaleDateString('sv-SE'))+'.xlsx');
+    const cloud=window.attendanceCloud;
+    const day=cloud?.enabled?cloud.day:new Date().toLocaleDateString('sv-SE');
+    XLSX.writeFile(wb,safeFilename(cloud?.eventName||'diem_danh')+'_'+day+'.xlsx');
   };
   $('secureHint').textContent=(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')?'✓ Sẵn sàng cho camera':'⚠ Cần HTTPS để dùng camera';
   window.addEventListener('beforeunload',()=>stopScanner());
@@ -428,6 +435,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.3"></script>
+<script type="module" src="./cloud-ui.mjs?v=2.4"></script>
 </body>
 </html>

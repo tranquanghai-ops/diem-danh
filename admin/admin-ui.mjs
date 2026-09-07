@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=2.3';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=2.4';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 
@@ -32,7 +32,6 @@ function render(){
 function escapeHtml(s){return String(s).replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));}
 function action(fn){return async()=>{try{await fn();render();}catch(e){cloud.error(e);$('adminStatus').className='status error';$('adminStatus').textContent=cloud.message;}};}
 
-$('saveConfigBtn').onclick=action(()=>cloud.configure($('config').value));
 $('loginBtn').onclick=action(()=>cloud.login());
 $('reconnectBtn').onclick=action(async()=>{if(!cloud.connected)await cloud.restore();else{cloud.subscribe();await cloud.flush();}});
 $('shareBtn').onclick=action(async()=>{
@@ -44,11 +43,11 @@ $('day').onchange=action(()=>{editingEvent=false;cloud.setDay($('day').value);})
 $('eventName').oninput=()=>{editingEvent=true;};
 $('saveEventBtn').onclick=action(async()=>{await cloud.saveEventName($('eventName').value);editingEvent=false;});
 $('eventName').onkeydown=e=>{if(e.key==='Enter'&&!$('saveEventBtn').disabled)$('saveEventBtn').click();};
-$('localBtn').onclick=action(()=>cloud.disconnect());
 $('deleteBtn').onclick=action(()=>cloud.clearVisible());
 
 function exportRows(){return rows().map((r,i)=>({STT:i+1,MSSV:r.mssv,'Người quét':r.scannerName||'Không ghi nhận','Thời gian':time(r.time),'Trạng thái':r.status||'Đã lưu'}));}
-function filename(ext){return `diem_danh_${cloud.day}.${ext}`;}
+function safeFilename(value){return String(value||'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,80)||'diem_danh';}
+function filename(ext){return `${safeFilename(cloud.eventName||'diem_danh')}_${cloud.day}.${ext}`;}
 $('excelBtn').onclick=()=>{const ws=XLSX.utils.json_to_sheet(exportRows());ws['!cols']=[{wch:7},{wch:18},{wch:28},{wch:23},{wch:18}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Diem danh');XLSX.writeFile(wb,filename('xlsx'));};
 $('csvBtn').onclick=()=>{const values=[['STT','MSSV','Người quét','Thời gian','Trạng thái'],...exportRows().map(r=>[r.STT,r.MSSV,r['Người quét'],r['Thời gian'],r['Trạng thái']])];download(new Blob(['\ufeff'+values.map(a=>a.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),filename('csv'));};
 $('jsonBtn').onclick=()=>download(new Blob([JSON.stringify({day:cloud.day,exportedAt:new Date().toISOString(),attendance:rows(),pending:cloud.outbox?.entries()||[]},null,2)],{type:'application/json'}),filename('json'));
@@ -58,7 +57,6 @@ if(DEFAULT_FIREBASE_CONFIG&&!cloud.settings){
   await action(()=>cloud.configure(JSON.stringify(DEFAULT_FIREBASE_CONFIG)))();
 }
 await cloud.restore();
-if(cloud.settings?.config)$('config').value=JSON.stringify(cloud.settings.config,null,2);
 if(cloud.connected&&cloud.owner)$('shareLink').value=cloud.shareLink();
 if(cloud.day!==vietnamDay())cloud.setDay(vietnamDay());
 render();
