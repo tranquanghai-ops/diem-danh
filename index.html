@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V1.2</title>
+  <title>Điểm danh Barcode - MSSV V1.3</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -49,86 +49,87 @@
     .topbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     @media(max-width:850px){.grid{grid-template-columns:1fr}.scanner-wrap{aspect-ratio:4/3}.form-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr 1fr}}
     @media(max-width:520px){.app{padding:12px}.stats{grid-template-columns:1fr}.buttons button{flex:1}.topbar{width:100%}header{align-items:flex-start;flex-direction:column}}
+    .app{max-width:740px;padding:12px 12px 28px}
+    header{flex-direction:row;align-items:center;margin-bottom:10px}
+    h1{font-size:20px}
+    .status{position:sticky;top:8px;z-index:5;margin:0 0 12px;padding:14px 16px;box-shadow:0 4px 16px rgba(15,23,42,.12);min-height:94px}
+    .status-title{font-size:19px;font-weight:800;line-height:1.35}
+    .status-detail{margin-top:5px;font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+    .status.success .status-title{color:#166534}
+    .status.warn .status-title{color:#92400e}
+    .status.success .status-detail,.status.warn .status-detail{font-size:26px;font-weight:800}
+    .scanner-card{padding:12px}
+    .scanner-wrap{aspect-ratio:16/9;max-height:340px}
+    .scan-frame{top:32%;height:30%}
+    .scan-actions{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:6px}
+    .scan-actions button{padding:12px 6px;font-size:14px}
+    .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+    .stat{text-align:center;padding:8px 4px;background:#f8fafc;border:0}
+    .stat b{font-size:24px}.stat span{font-size:12px}
+    .list-card,.settings{margin-top:12px}
+    .card h2{margin:0;font-size:16px}
+    .table-wrap{max-height:320px}table{min-width:0;width:100%;font-size:12px}th,td{padding:10px 6px}
+    .settings summary{cursor:pointer;font-size:14px;font-weight:650}
+    .settings[open] summary{margin-bottom:16px}
+    @media(max-width:520px){th:last-child,td:last-child{display:none}.status{top:6px}.buttons{gap:6px}}
   </style>
 </head>
 <body>
 <div class="app">
-  <header>
-    <div>
-      <h1>Điểm danh bằng Barcode</h1>
-      <div class="subtitle">Quét mã vạch trên thẻ sinh viên — chỉ lưu MSSV và thời gian. • V1.2</div>
-    </div>
-    <div class="pill" id="secureHint">Camera cần HTTPS hoặc localhost</div>
-  </header>
+  <header><h1>Điểm danh sinh viên</h1><span class="subtitle">V1.3</span></header>
 
-  <div class="grid">
-    <section class="card">
-      <div class="row between">
-        <h2>Quét điểm danh</h2>
-        <div class="topbar">
-          <select id="cameraSelect" style="max-width:290px" aria-label="Chọn camera"></select>
-        </div>
-      </div>
-      <div class="scanner-wrap" id="scannerBox">
-        <video id="video" autoplay playsinline webkit-playsinline muted></video>
-        <div class="scan-frame"></div>
-        <div class="scan-tip">Đưa mã vạch vào khung • tự động quét</div>
-      </div>
-      <div class="buttons">
-        <button class="primary" id="startBtn">▶ Bắt đầu quét</button>
-        <button class="secondary" id="stopBtn" disabled>■ Dừng camera</button>
-        <button class="secondary" id="manualBtn">⌨ Nhập MSSV</button>
-        <button class="secondary" id="testFeedbackBtn">🔊 Thử tiếng / rung</button>
-      </div>
-      <div id="status" class="status">
-        <div class="muted">Trạng thái</div>
-        <div><b>Chưa bắt đầu quét.</b> Nhấn “Bắt đầu quét” để điểm danh ngay.</div>
-      </div>
-      <div class="stats">
-        <div class="stat"><span class="muted">Đã có mặt</span><b id="countAttendance">0</b></div>
-        <div class="stat"><span class="muted">Số lượt quét</span><b id="countScans">0</b></div>
-        <div class="stat"><span class="muted">Trùng</span><b id="countDuplicates">0</b></div>
-      </div>
-    </section>
-
-    <aside class="card">
-      <h2>Dữ liệu điểm danh</h2>
-      <div class="note">Dữ liệu được lưu cục bộ trên thiết bị này bằng trình duyệt. Không gửi MSSV lên Internet.</div>
-      <p id="feedbackHint" class="note" role="status"></p>
-      <p id="vibrationHint" class="note" role="status"></p>
-      <h3>Thao tác dữ liệu</h3>
-      <div class="buttons">
-        <button class="success" id="excelBtn">↓ Excel (.xlsx)</button>
-        <button class="secondary" id="csvBtn">↓ CSV</button>
-        <button class="secondary" id="backupBtn">💾 Sao lưu JSON</button>
-        <button class="secondary" id="restoreBtn">↥ Khôi phục</button>
-      </div>
-      <input id="restoreFile" type="file" accept="application/json,.json" style="display:none" />
-      <p class="note">Danh sách được giữ khi đóng trang. Cuối buổi hãy xuất Excel hoặc CSV; dùng “Xóa danh sách” khi muốn điểm danh lại.</p>
-    </aside>
+  <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">
+    <div class="status-title">Sẵn sàng điểm danh</div>
+    <div class="status-detail">Nhấn “Bắt đầu quét” để mở camera sau.</div>
   </div>
 
-  <section class="card" style="margin-top:16px">
-    <div class="row between">
-      <h2>Danh sách đã điểm danh</h2>
-      <button class="secondary" id="clearBtn">Xóa danh sách</button>
+  <section class="card scanner-card" aria-label="Quét thẻ sinh viên">
+    <div class="scanner-wrap" id="scannerBox">
+      <video id="video" autoplay playsinline webkit-playsinline muted></video>
+      <div class="scan-frame"></div>
+      <div class="scan-tip">Đưa mã vạch trên thẻ vào khung</div>
     </div>
+    <div class="buttons scan-actions">
+      <button class="primary" id="startBtn">▶ Bắt đầu quét</button>
+      <button class="secondary" id="stopBtn" disabled>■ Dừng</button>
+      <button class="secondary" id="manualBtn">Nhập MSSV</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="countAttendance">0</b><span class="muted">Có mặt</span></div>
+      <div class="stat"><b id="countScans">0</b><span class="muted">Lượt quét</span></div>
+      <div class="stat"><b id="countDuplicates">0</b><span class="muted">Trùng</span></div>
+    </div>
+  </section>
+
+  <section class="card list-card">
+    <div class="row between"><h2>Danh sách điểm danh</h2><button class="success" id="excelBtn">↓ Excel</button></div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>STT</th><th>MSSV</th><th>Thời gian</th><th>Trạng thái</th></tr></thead>
         <tbody id="attendanceBody"></tbody>
       </table>
-      <div id="emptyTable" class="empty">Chưa có sinh viên nào được điểm danh.</div>
+      <div id="emptyTable" class="empty">Chưa có sinh viên điểm danh.</div>
     </div>
+    <p class="note">Đang lưu trên điện thoại này • Chưa đồng bộ trực tuyến</p>
   </section>
 
-  <section class="card" style="margin-top:16px">
-    <h2>Hướng dẫn nhanh</h2>
-    <div class="note">
-      1) Nhấn <b>Bắt đầu quét</b> và cấp quyền camera. 2) Đưa barcode 1D trên thẻ vào khung. 3) Điểm danh thành công sẽ báo tiếng, rung nếu thiết bị hỗ trợ và hiện thông báo xanh. 4) Cuối buổi chọn <b>Excel</b> hoặc <b>CSV</b>.<br>Dùng <b>Thử tiếng / rung</b> để kiểm tra; tăng âm lượng phương tiện nếu chưa nghe tiếng.
-      <br><br>Để camera hoạt động khi đưa app lên GitHub Pages, website phải được mở bằng <b>HTTPS</b>.
+  <details class="card settings">
+    <summary>Cài đặt và dữ liệu</summary>
+    <label for="cameraSelect">Camera sau</label>
+    <select id="cameraSelect" aria-label="Chọn camera sau"></select>
+    <div class="buttons"><button class="secondary" id="testFeedbackBtn">🔊 Thử tiếng / rung</button></div>
+    <p id="feedbackHint" class="note" role="status"></p>
+    <p id="vibrationHint" class="note" role="status"></p>
+    <p id="secureHint" class="note"></p>
+    <div class="buttons">
+      <button class="secondary" id="csvBtn">↓ CSV</button>
+      <button class="secondary" id="backupBtn">Sao lưu JSON</button>
+      <button class="secondary" id="restoreBtn">Khôi phục</button>
+      <button class="danger" id="clearBtn">Xóa danh sách</button>
     </div>
-  </section>
+    <input id="restoreFile" type="file" accept="application/json,.json" hidden />
+    <p class="note">Xuất Excel hoặc sao lưu trước khi xóa danh sách để điểm danh buổi tiếp theo.</p>
+  </details>
 </div>
 
 <dialog id="manualDialog">
@@ -194,7 +195,7 @@
 
   function setStatus(type, title, detail){
     statusBox.className = 'status' + (type ? ' ' + type : '');
-    statusBox.innerHTML = '<div class="muted">Trạng thái</div><div><b>' + escapeHtml(title) + '</b>' + (detail ? ' ' + escapeHtml(detail) : '') + '</div>';
+    statusBox.innerHTML = '<div class="status-title">' + escapeHtml(title) + '</div>' + (detail ? '<div class="status-detail">' + escapeHtml(detail) + '</div>' : '');
   }
   function escapeHtml(s){ return String(s).replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 
