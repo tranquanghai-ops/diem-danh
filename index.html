@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V1.1</title>
+  <title>Điểm danh Barcode - MSSV V1.2</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -56,7 +56,7 @@
   <header>
     <div>
       <h1>Điểm danh bằng Barcode</h1>
-      <div class="subtitle">Quét mã vạch trên thẻ sinh viên — chỉ lưu MSSV và thời gian. • V1.1</div>
+      <div class="subtitle">Quét mã vạch trên thẻ sinh viên — chỉ lưu MSSV và thời gian. • V1.2</div>
     </div>
     <div class="pill" id="secureHint">Camera cần HTTPS hoặc localhost</div>
   </header>
@@ -70,7 +70,7 @@
         </div>
       </div>
       <div class="scanner-wrap" id="scannerBox">
-        <video id="video" playsinline muted></video>
+        <video id="video" autoplay playsinline webkit-playsinline muted></video>
         <div class="scan-frame"></div>
         <div class="scan-tip">Đưa mã vạch vào khung • tự động quét</div>
       </div>
@@ -95,6 +95,7 @@
       <h2>Dữ liệu điểm danh</h2>
       <div class="note">Dữ liệu được lưu cục bộ trên thiết bị này bằng trình duyệt. Không gửi MSSV lên Internet.</div>
       <p id="feedbackHint" class="note" role="status"></p>
+      <p id="vibrationHint" class="note" role="status"></p>
       <h3>Thao tác dữ liệu</h3>
       <div class="buttons">
         <button class="success" id="excelBtn">↓ Excel (.xlsx)</button>
@@ -211,52 +212,99 @@
       body.appendChild(tr);
     });
   }
+  let cameraRequest = 0;
+  const isRearCamera = d => /back|rear|environment|sau|arrière|rück/i.test(d.label || '') && !/front|user|trước|selfie/i.test(d.label || '');
+  function releaseStream(stream){
+    try{ stream?.getTracks().forEach(t=>t.stop()); }catch(e){}
+  }
   async function listCameras(){
+    const selected = cameraSelect.value;
+    cameraSelect.innerHTML='<option value="">Camera sau (tự động)</option>';
     try{
       if(!navigator.mediaDevices?.enumerateDevices) return;
-      const selected = cameraSelect.value;
       const devices=await navigator.mediaDevices.enumerateDevices();
-      const cams=devices.filter(d=>d.kind==='videoinput');
-      cameraSelect.innerHTML='';
-      cams.forEach((d,i)=>{ const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('Camera '+(i+1)); cameraSelect.appendChild(o); });
-      const back=cams.find(d=>/back|rear|environment|sau|phía sau/i.test(d.label));
-      const activeId = video.srcObject?.getVideoTracks()[0]?.getSettings()?.deviceId;
-      const preferred = activeId || selected || back?.deviceId;
-      if(cams.some(d=>d.deviceId===preferred)) cameraSelect.value=preferred;
-    }catch(e){ cameraSelect.innerHTML='<option>Camera mặc định</option>'; }
+      const active = state.stream?.getVideoTracks()[0];
+      const settings = active?.getSettings() || {};
+      const cams=devices.filter(d=>d.kind==='videoinput' && (isRearCamera(d) || (settings.facingMode==='environment' && d.deviceId===settings.deviceId)));
+      cams.forEach((d,i)=>{
+        const o=document.createElement('option'); o.value=d.deviceId;
+        o.textContent=d.label||('Camera sau '+(i+1)); cameraSelect.appendChild(o);
+      });
+      if(cams.some(d=>d.deviceId===selected)) cameraSelect.value=selected;
+    }catch(e){ /* Keep the automatic rear camera option. */ }
   }
-
+  async function openRearCamera(deviceId){
+    const media=navigator.mediaDevices;
+    let firstError;
+    try{
+      return await media.getUserMedia({audio:false,video:deviceId
+        ? {deviceId:{exact:deviceId},facingMode:{exact:'environment'}}
+        : {facingMode:{exact:'environment'}}});
+    }catch(e){
+      firstError=e;
+      if(!['OverconstrainedError','NotFoundError','DevicesNotFoundError'].includes(e.name)) throw e;
+    }
+    // Some browsers cannot apply facingMode. Only retry a labelled rear device.
+    const devices=await media.enumerateDevices();
+    const rear=devices.filter(d=>d.kind==='videoinput' && isRearCamera(d));
+    const candidate=rear.find(d=>d.deviceId===deviceId) || rear[0];
+    if(!candidate) throw firstError;
+    return media.getUserMedia({audio:false,video:{deviceId:{exact:candidate.deviceId}}});
+  }
   async function startScanner(){
     void unlockAudio();
-    if(location.protocol!=='https:' && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
-      setStatus('warn','Trình duyệt có thể chặn camera.','Hãy mở website bằng HTTPS (GitHub Pages đã có HTTPS).');
+    if(!navigator.mediaDevices?.getUserMedia){
+      setStatus('error','Trình duyệt không cho dùng camera.','Mở đường dẫn HTTPS trực tiếp trong trình duyệt điện thoại.'); return;
     }
     if(!window.ZXingBrowser){ setStatus('error','Không tải được bộ đọc barcode.','Kiểm tra kết nối Internet rồi tải lại trang.'); return; }
-    await stopScanner();
+    stopScanner();
+    const request=++cameraRequest;
+    let stream=null;
     try{
-      state.reader = new ZXingBrowser.BrowserMultiFormatReader();
-      const deviceId = cameraSelect.value;
+      $('startBtn').disabled=true; $('stopBtn').disabled=false; cameraSelect.disabled=true;
+      setStatus('', 'Đang mở camera sau…', 'Cho phép quyền camera nếu trình duyệt hỏi.');
+      stream=await openRearCamera(cameraSelect.value);
+      if(request!==cameraRequest){ releaseStream(stream); return; }
+      const track=stream.getVideoTracks()[0];
+      const facing=track?.getSettings()?.facingMode;
+      if(facing==='user' || /front|trước|selfie/i.test(track?.label||'')){
+        const error=new Error('Không tìm thấy camera sau.'); error.name='NotFoundError'; throw error;
+      }
+      state.stream=stream;
+      video.muted=true; video.setAttribute('playsinline','');
+      state.reader=new ZXingBrowser.BrowserMultiFormatReader();
       state.scanning=true;
-      $('startBtn').disabled=true; $('stopBtn').disabled=false;
-      setStatus('', 'Đang mở camera…', 'Đưa barcode 1D vào khung trắng.');
-      state.controls = await state.reader.decodeFromConstraints({audio:false,video:deviceId ? {deviceId:{exact:deviceId}} : {facingMode:{ideal:'environment'}}}, video, (result, err) => {
-        if(result){ handleScan(result.getText(), 'camera'); }
+      const controls=await state.reader.decodeFromStream(stream, video, result=>{
+        if(request===cameraRequest && state.scanning && result) handleScan(result.getText(),'camera');
       });
-      state.stream = video.srcObject;
+      if(request!==cameraRequest){ controls.stop(); releaseStream(stream); return; }
+      state.controls=controls;
+      cameraSelect.disabled=false;
+      setStatus('', 'Camera sau đang quét.', 'Đưa mã vạch trên thẻ vào khung.');
       await listCameras();
     }catch(e){
-      state.scanning=false; $('startBtn').disabled=false; $('stopBtn').disabled=true;
-      setStatus('error','Không mở được camera.', e?.message || 'Hãy kiểm tra quyền camera và thử lại.');
+      releaseStream(stream);
+      if(request!==cameraRequest) return;
+      stopScanner();
+      const details={
+        NotAllowedError:'Hãy cho phép quyền camera trong cài đặt của trang rồi nhấn “Bắt đầu quét” lại.',
+        PermissionDeniedError:'Hãy cho phép quyền camera của trang rồi thử lại.',
+        NotReadableError:'Camera đang bận. Đóng ứng dụng hoặc tab khác đang dùng camera rồi thử lại.',
+        TrackStartError:'Camera đang bận hoặc chưa sẵn sàng. Đóng ứng dụng camera khác rồi thử lại.',
+        NotFoundError:'Không tìm thấy camera sau khả dụng. Trang sẽ không dùng camera trước.',
+        OverconstrainedError:'Không mở được camera sau với cấu hình thiết bị này. Trang sẽ không dùng camera trước.'
+      };
+      setStatus('error','Không mở được camera sau.',(details[e.name]||e.message||'Vui lòng thử lại.')+' ['+(e.name||'Error')+']');
     }
   }
-  async function stopScanner(){
-    try{ if(state.controls?.stop) state.controls.stop(); }catch(e){}
+  function stopScanner(){
+    cameraRequest++;
+    try{ state.controls?.stop(); }catch(e){}
     state.controls=null;
-    try{ if(state.reader?.reset) state.reader.reset(); }catch(e){}
-    state.reader=null;
-    try{ if(video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; } }catch(e){}
-    state.scanning=false;
-    $('startBtn').disabled=false; $('stopBtn').disabled=true;
+    releaseStream(state.stream); state.stream=null;
+    releaseStream(video.srcObject); video.srcObject=null;
+    state.reader=null; state.scanning=false;
+    $('startBtn').disabled=false; $('stopBtn').disabled=true; cameraSelect.disabled=false;
   }
 
   function handleScan(raw, source){
@@ -299,7 +347,7 @@
   }
   async function beep(ok){
     // Keep vibration independent of audio playback/resume failures.
-    try{ if(typeof navigator.vibrate==='function') navigator.vibrate(ok?[160]:[120,80,120]); }catch(e){}
+    vibratePhone(ok ? 250 : [160,100,160]);
     if(!audioContext || audioContext.state!=='running'){
       if(!await unlockAudio()) return;
     }
@@ -315,7 +363,19 @@
       osc.start(t); osc.stop(t+.24);
     }catch(e){ updateFeedbackHint('Chưa phát được tiếng. Nhấn “Thử tiếng / rung” để thử lại.'); }
   }
-  $('testFeedbackBtn').onclick=()=>{ void unlockAudio(); void beep(true); };
+  function vibratePhone(pattern){
+    if(typeof navigator.vibrate!=='function'){
+      $('vibrationHint').textContent='Không có hỗ trợ rung trong trình duyệt này.'; return false;
+    }
+    try{
+      const accepted=navigator.vibrate(pattern);
+      $('vibrationHint').textContent=accepted
+        ? 'Đã gửi lệnh rung. Nếu máy không rung, kiểm tra cài đặt rung và chế độ im lặng / Không làm phiền.'
+        : 'Trình duyệt đã từ chối lệnh rung. Mở trang trực tiếp trong trình duyệt rồi thử lại.';
+      return accepted;
+    }catch(e){ $('vibrationHint').textContent='Thiết bị hoặc trình duyệt đang chặn rung.'; return false; }
+  }
+  $('testFeedbackBtn').onclick=()=>{ void beep(true); };
 
   $('startBtn').onclick=startScanner;
   $('stopBtn').onclick=async()=>{ await stopScanner(); setStatus('', 'Đã dừng camera.'); };
