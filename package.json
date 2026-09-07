@@ -1,0 +1,13 @@
+{
+  "name": "diem-danh-firebase-checks",
+  "private": true,
+  "scripts": {
+    "test:core": "node --test tests/sync-core.test.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-attendance 'node --test tests/firestore.test.mjs'"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.0",
+    "firebase": "12.18.0",
+    "firebase-tools": "14.27.0"
+  }
+}
