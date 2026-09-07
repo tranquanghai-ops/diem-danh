@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.9</title>
+  <title>Điểm danh Barcode - MSSV V3.0</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -53,21 +53,22 @@
     .app{max-width:740px;padding:12px 12px 28px}
     header{flex-direction:row;align-items:center;margin-bottom:10px}
     h1{font-size:20px}
-    .status{position:sticky;top:8px;z-index:5;margin:0 0 12px;padding:14px 16px;box-shadow:0 4px 16px rgba(15,23,42,.12);min-height:94px}
-    .status-title{font-size:19px;font-weight:800;line-height:1.35}
+    .status{margin:0 0 8px;padding:8px 12px;box-shadow:none;min-height:0}
+    .status-title{font-size:15px;font-weight:750;line-height:1.3}
     .status-detail{margin-top:5px;font-size:14px;line-height:1.4;overflow-wrap:anywhere}
     .status.success .status-title{color:#166534}
     .status.warn .status-title{color:#92400e}
-    .status.success .status-detail,.status.warn .status-detail{font-size:26px;font-weight:800}
+    .status.success .status-detail,.status.warn .status-detail{font-size:17px;font-weight:750}
     .scanner-card{padding:12px}
     .scanner-wrap{aspect-ratio:16/9;max-height:340px}
     .scan-frame{top:32%;height:30%}
     .scan-actions{display:grid;grid-template-columns:1.45fr 1fr;gap:6px}
     .scan-actions button{padding:12px 6px;font-size:14px}
     .scan-actions .photo{grid-column:1/-1}
-    .last-photo{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}
-    .last-photo img,.photo-preview{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#0f172a}
-    .last-photo p{margin:8px 0 0}
+    .photo-preview{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#0f172a}
+    .image-stage{height:min(68vh,620px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}
+    .image-stage img{display:block;width:100%;max-width:none;transition:width .12s ease}
+    .photo-link{padding:5px 9px;color:#1d4ed8;background:#dbeafe;text-decoration:underline}
     .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
     .stat{text-align:center;padding:8px 4px;background:#f8fafc;border:0}
     .stat b{font-size:24px}.stat span{font-size:12px}
@@ -84,8 +85,10 @@
 <body>
 <div class="app">
   <section class="card scanner-name">
-    <label for="scannerName">Tên người quét</label>
-    <input id="scannerName" maxlength="80" autocomplete="name" placeholder="Nhập họ tên người đang phụ trách quét" />
+    <div id="eventInfo" class="note">Đang tải sự kiện…</div>
+    <label for="scannerName">Họ tên thành viên</label>
+    <div class="row"><input id="scannerName" maxlength="100" autocomplete="name" placeholder="Nhập đúng họ tên GV đã thêm" style="flex:1"><button class="primary" id="verifyMemberBtn">Xác nhận</button></div>
+    <p id="memberHint" class="note">Bạn phải có tên trong sự kiện mới mở được camera.</p>
   </section>
 
   <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">
@@ -102,13 +105,8 @@
     <div class="buttons scan-actions">
       <button class="primary" id="startBtn">▶ Bắt đầu quét</button>
       <button class="secondary" id="stopBtn" disabled>■ Dừng</button>
-      <button class="secondary" id="ocrBtn">▣ Đọc chữ MSSV</button>
       <button class="secondary" id="manualBtn">Nhập MSSV</button>
       <button class="warn photo" id="photoBtn">📷 Chụp thẻ để GV nhập sau</button>
-    </div>
-    <div id="lastPhoto" class="last-photo" hidden>
-      <img id="lastPhotoImage" alt="Ảnh thẻ vừa gửi">
-      <p class="note">Ảnh vừa gửi • Chỉ người chụp và GV có thể xem</p>
     </div>
     <div class="stats">
       <div class="stat"><b id="countAttendance">0</b><span class="muted">Có mặt</span></div>
@@ -138,14 +136,22 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V2.9</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V3.0</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
   <div class="modal">
     <h2>Nhập MSSV thủ công</h2>
-    <label for="manualMssv">MSSV</label><input id="manualMssv" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 123456789011" />
+    <label for="manualMssv">MSSV</label><input id="manualMssv" inputmode="text" autocapitalize="characters" autocomplete="off" placeholder="Ví dụ: 12300325 hoặc mã có chữ" />
     <div class="modal-actions"><button class="secondary" id="cancelManual">Hủy</button><button class="primary" id="saveManual">Điểm danh</button></div>
+  </div>
+</dialog>
+
+<dialog id="imageViewerDialog">
+  <div class="modal">
+    <div class="row between"><h2>Xem hình chụp</h2><button class="secondary" id="closeImageViewer">Đóng</button></div>
+    <div class="image-stage"><img id="viewerImage" alt="Hình thẻ đã chụp"></div>
+    <div class="buttons"><button class="secondary" id="zoomOut">− Thu nhỏ</button><button class="secondary" id="zoomReset">100%</button><button class="secondary" id="zoomIn">＋ Phóng to</button></div>
   </div>
 </dialog>
 
@@ -192,8 +198,9 @@
   function scannerName(){ return scannerNameInput.value.trim(); }
   function requireScannerName(){
     const name=scannerName();
-    if(name) return name;
-    setStatus('error','Chưa có tên người quét.','Nhập họ tên người phụ trách quét ở ô phía trên.');
+    const cloud=window.attendanceCloud;
+    if(name&&(!cloud?.enabled||cloud.authorized)) return name;
+    setStatus('error','Chưa được phép quét.','Nhập đúng họ tên đã được GV thêm rồi nhấn “Xác nhận”.');
     scannerNameInput.focus();return '';
   }
   scannerNameInput.addEventListener('input',()=>localStorage.setItem(SCANNER_NAME_KEY,scannerNameInput.value.trim()));
@@ -241,17 +248,27 @@
     const rows = batch?.attendance || [];
     const eventName=window.attendanceCloud?.eventName||'';
     $('attendanceTitle').textContent=eventName?'Danh sách điểm danh – '+eventName:'Danh sách điểm danh';
-    $('countAttendance').textContent = rows.filter(r=>r.status!=='Chờ gửi').length;
+    $('countAttendance').textContent = rows.filter(r=>r.kind!=='photo').length;
     $('countScans').textContent = batch?.scanCount || 0;
     $('countDuplicates').textContent = batch?.duplicateCount || 0;
     const body = $('attendanceBody'); body.innerHTML='';
     $('emptyTable').style.display = rows.length ? 'none' : 'block';
     [...rows].reverse().forEach((r,i)=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>'+(rows.length-i)+'</td><td><b>'+escapeHtml(r.mssv)+'</b></td><td>'+escapeHtml(fmtTime(r.time))+'</td><td><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
+      const code=r.kind==='photo'?'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Hình chụp</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
+      tr.innerHTML = '<td>'+(rows.length-i)+'</td><td>'+code+'</td><td>'+escapeHtml(fmtTime(r.time))+'</td><td><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
       body.appendChild(tr);
     });
   }
+  let viewerScale=1;
+  function applyZoom(){viewerScale=Math.max(.5,Math.min(4,viewerScale));$('viewerImage').style.width=(viewerScale*100)+'%';$('zoomReset').textContent=Math.round(viewerScale*100)+'%';}
+  function viewPhoto(id){
+    const photo=(currentBatch()?.attendance||[]).find(r=>r.kind==='photo'&&r.id===id);if(!photo?.imageData)return;
+    viewerScale=1;$('viewerImage').src=photo.imageData;applyZoom();$('imageViewerDialog').showModal();
+  }
+  $('attendanceBody').onclick=e=>{const button=e.target.closest('[data-view-photo]');if(button)viewPhoto(button.dataset.viewPhoto);};
+  $('closeImageViewer').onclick=()=>$('imageViewerDialog').close();
+  $('zoomIn').onclick=()=>{viewerScale+=.25;applyZoom();};$('zoomOut').onclick=()=>{viewerScale-=.25;applyZoom();};$('zoomReset').onclick=()=>{viewerScale=1;applyZoom();};
   let cameraRequest = 0;
   const isRearCamera = d => /back|rear|environment|sau|arrière|rück/i.test(d.label || '') && !/front|user|trước|selfie/i.test(d.label || '');
   function releaseStream(stream){
@@ -422,7 +439,7 @@
       return;
     }
     if(window.attendanceCloud?.enabled){
-      window.attendanceCloud.scan(mssv,source,operator).catch(e=>setStatus('error','Chưa ghi nhận.',e.message));return;
+      window.attendanceCloud.scan(mssv,source).catch(e=>setStatus('error','Chưa ghi nhận.',e.message));return;
     }
     const batch=currentBatch(); if(!batch) return;
     batch.scanCount=(batch.scanCount||0)+1;
@@ -497,22 +514,6 @@
   $('saveManual').onclick=()=>{ void unlockAudio(); const v=$('manualMssv').value.trim(); if(!v){alert('Vui lòng nhập MSSV.');return;} handleScan(v,'manual'); $('manualDialog').close(); };
   $('manualMssv').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveManual').click();});
 
-  let ocrWorker=null,ocrLoading=null;
-  function loadScript(src){
-    return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Không tải được bộ OCR.'));document.head.appendChild(s);});
-  }
-  async function getOcrWorker(){
-    if(ocrWorker)return ocrWorker;
-    if(!ocrLoading)ocrLoading=(async()=>{
-      if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
-      const worker=await Tesseract.createWorker('eng',1,{logger:m=>{
-        if(m.status==='recognizing text')setStatus('', 'Đang đọc chữ MSSV…',Math.round((m.progress||0)*100)+'%');
-      }});
-      await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789: ',tessedit_pageseg_mode:'6'});
-      return worker;
-    })();
-    try{ocrWorker=await ocrLoading;return ocrWorker;}catch(e){ocrLoading=null;throw e;}
-  }
   function captureScanFrame(){
     if(!state.scanning||video.readyState<2)throw new Error('Hãy bắt đầu camera trước.');
     const frame=document.querySelector('.scan-frame').getBoundingClientRect(),box=video.getBoundingClientRect();
@@ -531,27 +532,9 @@
     const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.45)';ctx.drawImage(video,0,0,canvas.width,canvas.height);
     return canvas;
   }
-  $('ocrBtn').onclick=async()=>{
-    if(!requireScannerName())return;
-    $('ocrBtn').disabled=true;
-    try{
-      setStatus('', 'Đang chuẩn bị đọc chữ…','Giữ toàn bộ mặt thẻ rõ và thẳng trong camera.');
-      const canvas=captureFullCard(),worker=await getOcrWorker(),result=await worker.recognize(canvas);
-      const text=String(result.data.text||'').toUpperCase().replace(/[^A-Z0-9: ]/g,' ');
-      const labelled=text.match(/M[S5][S5]V\s*:?\s*([A-Z0-9]{8,12})/);
-      const candidates=text.match(/[A-Z0-9]{8,12}/g)||[];
-      const suggested=normalizeMssv(labelled?.[1]||candidates.find(validStudentId)||'');
-      const entered=prompt('Kết quả đọc chữ MSSV. Hãy kiểm tra hoặc sửa lại trước khi lưu:',suggested);
-      if(entered===null){setStatus('warn','Đã hủy kết quả OCR.');return;}
-      const mssv=normalizeMssv(entered);
-      if(!validStudentId(mssv))throw new Error('Không đọc rõ MSSV. Có thể chụp thẻ để GV nhập lại sau.');
-      handleScan(mssv,'camera');
-    }catch(e){setStatus('error','Không đọc được chữ MSSV.',e.message||'Vui lòng thử lại.');}
-    finally{$('ocrBtn').disabled=false;}
-  };
   let pendingPhoto=null;
   $('photoBtn').onclick=()=>{
-    const operator=requireScannerName();if(!operator)return;
+    if(!requireScannerName())return;
     try{
       const cloud=window.attendanceCloud;
       if(!cloud?.connected)throw new Error('Chưa kết nối danh sách chung.');
@@ -559,7 +542,7 @@
       let imageData=canvas.toDataURL('image/jpeg',.6);
       if(imageData.length>450000)imageData=canvas.toDataURL('image/jpeg',.4);
       if(imageData.length>450000)throw new Error('Ảnh vẫn quá lớn. Đưa thẻ gần hơn rồi chụp lại.');
-      pendingPhoto={imageData,operator};
+      pendingPhoto={imageData};
       $('photoPreview').src=imageData;
       $('photoDialog').showModal();
     }catch(e){setStatus('error','Không chụp được ảnh.',e.message||'Vui lòng thử lại.');}
@@ -569,10 +552,9 @@
     if(!pendingPhoto)return;
     $('sendPhoto').disabled=true;$('retakePhoto').disabled=true;
     try{
-      const saved=await window.attendanceCloud.uploadPhoto(pendingPhoto.imageData,pendingPhoto.operator);
-      $('lastPhotoImage').src=saved.imageData;$('lastPhoto').hidden=false;
+      await window.attendanceCloud.uploadPhoto(pendingPhoto.imageData);
       $('photoDialog').close();pendingPhoto=null;$('photoPreview').removeAttribute('src');
-      setStatus('success','✓ Đã gửi ảnh cho GV.','Bạn đang xem đúng ảnh đã lưu trên Firestore.');
+      setStatus('success','✓ Đã gửi hình chụp.','Bấm “Hình chụp” trong danh sách để xem lại.');
       void beep(true);
     }catch(e){setStatus('error','Không gửi được ảnh.',e.message||'Vui lòng thử lại.');}
     finally{$('sendPhoto').disabled=false;$('retakePhoto').disabled=false;}
@@ -580,7 +562,7 @@
 
   function rowsForExport(){
     const b=currentBatch();
-    return (b?.attendance||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,Người_quét:r.scannerName||'Không ghi nhận',Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
+    return (b?.attendance||[]).filter(r=>r.kind!=='photo').map((r,i)=>({STT:i+1,MSSV:r.mssv,Thành_viên:r.memberName||r.scannerName||'Không ghi nhận',Sự_kiện:r.eventName||window.attendanceCloud?.eventName||'',Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
   }
   function safeFilename(value){
     return String(value||'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,80)||'diem_danh';
@@ -604,6 +586,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.9"></script>
+<script type="module" src="./cloud-ui.mjs?v=3.0"></script>
 </body>
 </html>

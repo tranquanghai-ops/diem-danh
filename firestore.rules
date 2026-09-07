@@ -8,20 +8,40 @@ service cloud.firestore {
       allow get: if signedIn() && publicDoc == 'default';
       allow list: if false;
       allow create: if publicDoc == 'default' && googleUser()
-        && request.resource.data.keys().hasAll(['room','updatedAt'])
-        && request.resource.data.keys().hasOnly(['room','updatedAt'])
+        && request.resource.data.keys().hasAll(['room','day','eventId','updatedAt'])
+        && request.resource.data.keys().hasOnly(['room','day','eventId','updatedAt'])
         && request.resource.data.room is string
         && request.resource.data.room.matches('^[a-f0-9]{48}$')
+        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.eventId.matches('^[a-f0-9-]{36}$')
+        && exists(/databases/$(database)/documents/rooms/$(request.resource.data.room)/days/$(request.resource.data.day)/events/$(request.resource.data.eventId))
         && owner(request.resource.data.room)
         && request.resource.data.updatedAt == request.time;
       allow update: if publicDoc == 'default' && googleUser()
         && owner(resource.data.room) && owner(request.resource.data.room)
-        && request.resource.data.keys().hasAll(['room','updatedAt'])
-        && request.resource.data.keys().hasOnly(['room','updatedAt'])
+        && request.resource.data.keys().hasAll(['room','day','eventId','updatedAt'])
+        && request.resource.data.keys().hasOnly(['room','day','eventId','updatedAt'])
         && request.resource.data.room is string
         && request.resource.data.room.matches('^[a-f0-9]{48}$')
+        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.eventId.matches('^[a-f0-9-]{36}$')
+        && exists(/databases/$(database)/documents/rooms/$(request.resource.data.room)/days/$(request.resource.data.day)/events/$(request.resource.data.eventId))
         && request.resource.data.updatedAt == request.time;
       allow delete: if publicDoc == 'default' && owner(resource.data.room);
+    }
+    match /publicEvents/{eventId} {
+      allow get: if signedIn() && eventId.matches('^[a-f0-9-]{36}$');
+      allow list: if false;
+      allow create, update: if googleUser()
+        && eventId.matches('^[a-f0-9-]{36}$')
+        && request.resource.data.keys().hasAll(['room','day','eventId','updatedAt'])
+        && request.resource.data.keys().hasOnly(['room','day','eventId','updatedAt'])
+        && request.resource.data.room.matches('^[a-f0-9]{48}$')
+        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.eventId == eventId
+        && owner(request.resource.data.room)
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if googleUser() && owner(resource.data.room);
     }
     match /rooms/{room} {
       // A random 192-bit invitation ID grants participation. Room enumeration is restricted.
@@ -96,6 +116,121 @@ service cloud.firestore {
           && (owner(room) || resource.data.uid == request.auth.uid);
         allow list, delete: if accessible() && owner(room);
         allow update: if false;
+      }
+      match /days/{day}/events/{eventId} {
+        function validEvent() {
+          return signedIn()
+            && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            && eventId.matches('^[a-f0-9-]{36}$')
+            && exists(/databases/$(database)/documents/rooms/$(room));
+        }
+        allow get: if validEvent();
+        allow list: if owner(room);
+        allow create: if owner(room) && validEvent()
+          && request.resource.data.keys().hasAll(['eventName','day','createdAt','updatedAt'])
+          && request.resource.data.keys().hasOnly(['eventName','day','createdAt','updatedAt'])
+          && request.resource.data.eventName is string
+          && request.resource.data.eventName.size() > 0
+          && request.resource.data.eventName.size() <= 100
+          && request.resource.data.day == day
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if owner(room) && validEvent()
+          && request.resource.data.keys().hasAll(['eventName','day','createdAt','updatedAt'])
+          && request.resource.data.keys().hasOnly(['eventName','day','createdAt','updatedAt'])
+          && request.resource.data.eventName is string
+          && request.resource.data.eventName.size() > 0
+          && request.resource.data.eventName.size() <= 100
+          && request.resource.data.day == day
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if owner(room);
+
+        match /members/{memberHash} {
+          function validMemberPath() {
+            return validEvent() && memberHash.matches('^[a-f0-9]{64}$');
+          }
+          // A scanner may test exactly one SHA-256 name; it may not enumerate names.
+          allow get: if validMemberPath();
+          allow list: if owner(room);
+          allow create: if owner(room) && validMemberPath()
+            && request.resource.data.keys().hasAll(['name','normalized','createdAt'])
+            && request.resource.data.keys().hasOnly(['name','normalized','createdAt'])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 2
+            && request.resource.data.name.size() <= 100
+            && request.resource.data.normalized is string
+            && request.resource.data.normalized.size() >= 2
+            && request.resource.data.normalized.size() <= 100
+            && request.resource.data.createdAt == request.time;
+          allow update: if owner(room) && validMemberPath()
+            && request.resource.data.keys().hasAll(['name','normalized','createdAt'])
+            && request.resource.data.keys().hasOnly(['name','normalized','createdAt'])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 2
+            && request.resource.data.name.size() <= 100
+            && request.resource.data.normalized is string
+            && request.resource.data.normalized.size() >= 2
+            && request.resource.data.normalized.size() <= 100
+            && request.resource.data.createdAt == resource.data.createdAt;
+          allow delete: if owner(room);
+        }
+
+        match /attendance/{mssv} {
+          function accessible() { return validEvent(); }
+          function validMembership() {
+            return request.resource.data.memberHash.matches('^[a-f0-9]{64}$')
+              && exists(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash))
+              && request.resource.data.memberName == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash)).data.name;
+          }
+          allow get: if accessible();
+          allow list: if accessible() && owner(room);
+          allow create: if accessible()
+            && mssv.matches('^[A-Za-z0-9_-]{1,64}$')
+            && request.resource.data.keys().hasAll(['mssv','scannedAt','source','memberName','memberHash','eventId','eventName','requestId','uid','createdAt'])
+            && request.resource.data.keys().hasOnly(['mssv','scannedAt','source','memberName','memberHash','eventId','eventName','requestId','uid','createdAt'])
+            && request.resource.data.mssv == mssv
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.eventId == eventId
+            && request.resource.data.eventName == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)).data.eventName
+            && request.resource.data.source in ['camera','manual']
+            && request.resource.data.requestId is string
+            && request.resource.data.requestId.size() == 36
+            && request.resource.data.scannedAt is string
+            && request.resource.data.scannedAt.size() <= 32
+            && validMembership()
+            && request.resource.data.createdAt == request.time;
+          allow update: if false;
+          allow delete: if accessible() && owner(room);
+        }
+
+        match /unread/{photoId} {
+          function accessible() { return validEvent(); }
+          function validMembership() {
+            return request.resource.data.memberHash.matches('^[a-f0-9]{64}$')
+              && exists(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash))
+              && request.resource.data.memberName == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash)).data.name;
+          }
+          allow create: if accessible()
+            && photoId.matches('^[a-f0-9-]{36}$')
+            && request.resource.data.keys().hasAll(['imageData','takenAt','memberName','memberHash','eventId','eventName','uid','createdAt'])
+            && request.resource.data.keys().hasOnly(['imageData','takenAt','memberName','memberHash','eventId','eventName','uid','createdAt'])
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.eventId == eventId
+            && request.resource.data.eventName == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)).data.eventName
+            && request.resource.data.takenAt is string
+            && request.resource.data.takenAt.size() <= 32
+            && request.resource.data.imageData is string
+            && request.resource.data.imageData.size() > 100
+            && request.resource.data.imageData.size() <= 450000
+            && request.resource.data.imageData.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+            && validMembership()
+            && request.resource.data.createdAt == request.time;
+          allow get: if accessible()
+            && (owner(room) || resource.data.uid == request.auth.uid);
+          allow list, delete: if accessible() && owner(room);
+          allow update: if false;
+        }
       }
     }
   }

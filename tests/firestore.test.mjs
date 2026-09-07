@@ -1,9 +1,12 @@
 import {test,before,after} from 'node:test';
 import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {doc,setDoc,getDoc,deleteDoc,collection,getDocs,query,where,runTransaction,serverTimestamp} from 'firebase/firestore';
-const room='a'.repeat(48),day='2026-09-07';let env,owner,a,b;
+import {doc,setDoc,getDoc,deleteDoc,updateDoc,collection,getDocs,query,where,runTransaction,serverTimestamp} from 'firebase/firestore';
+const room='a'.repeat(48),day='2026-09-07',eventId='11111111-1111-4111-8111-111111111111';let env,owner,a,b;
+const memberName='Lê Phạm Quỳnh Anh',memberNormal=memberName.normalize('NFC').toLocaleLowerCase('vi-VN');
+const memberHash=createHash('sha256').update(memberNormal).digest('hex');
 const ref=(db,mssv)=>doc(db,'rooms',room,'days',day,'attendance',mssv);
 const payload=(uid,mssv,id)=>({uid,mssv,requestId:id,source:'camera',scannerName:'Nguyễn Văn A',scannedAt:'2026-09-07T09:00:00Z',createdAt:serverTimestamp()});
 before(async()=>{
@@ -59,11 +62,45 @@ test('only owner can name a day; participants can read the name',async()=>{
  await assertFails(setDoc(dayRef,{eventName:'x'.repeat(101),updatedAt:serverTimestamp()}));
 });
 test('owner can publish the default scanner room; anonymous users can only read it',async()=>{
+ const eventRef=doc(owner,'rooms',room,'days',day,'events',eventId);
+ await assertSucceeds(setDoc(eventRef,{eventName:'Ca sáng',day,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
  const ownerDefault=doc(owner,'public','default');
- await assertSucceeds(setDoc(ownerDefault,{room,updatedAt:serverTimestamp()}));
+ await assertSucceeds(setDoc(ownerDefault,{room,day,eventId,updatedAt:serverTimestamp()}));
  assert.equal((await getDoc(doc(a,'public','default'))).data().room,room);
- await assertFails(setDoc(doc(a,'public','default'),{room,updatedAt:serverTimestamp()}));
- await assertFails(setDoc(ownerDefault,{room:'b'.repeat(48),updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(doc(a,'public','default'),{room,day,eventId,updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(ownerDefault,{room:'b'.repeat(48),day,eventId,updatedAt:serverTimestamp()}));
+});
+
+test('event membership gates scans and keeps events separate',async()=>{
+ const eventRef=doc(owner,'rooms',room,'days',day,'events',eventId),memberRef=doc(owner,'rooms',room,'days',day,'events',eventId,'members',memberHash);
+ await assertSucceeds(setDoc(memberRef,{name:memberName,normalized:memberNormal,createdAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(memberRef,{name:'LÊ PHẠM QUỲNH ANH',normalized:memberNormal}));
+ await assertFails(updateDoc(doc(a,'rooms',room,'days',day,'events',eventId,'members',memberHash),{name:'Tên giả'}));
+ await assertSucceeds(updateDoc(memberRef,{name:memberName,normalized:memberNormal}));
+ assert.equal((await getDoc(doc(a,'rooms',room,'days',day,'events',eventId,'members',memberHash))).data().name,memberName);
+ await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'members')));
+ await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',eventId,'members')));
+ const scan=(mssv,hash=memberHash,name=memberName)=>({mssv,scannedAt:'2026-09-07T10:00:00Z',source:'camera',memberName:name,memberHash:hash,eventId,eventName:'Ca sáng',requestId:'d'.repeat(36),uid:'scannerA',createdAt:serverTimestamp()});
+ const attendance=doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12300325');
+ await assertSucceeds(setDoc(attendance,scan('12300325')));
+ await assertFails(setDoc(doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12300326'),scan('12300326','f'.repeat(64),'Người lạ')));
+ await assertFails(deleteDoc(attendance));
+ await assertSucceeds(deleteDoc(doc(owner,'rooms',room,'days',day,'events',eventId,'attendance','12300325')));
+ const event2='22222222-2222-4222-8222-222222222222';
+ await assertSucceeds(setDoc(doc(owner,'rooms',room,'days',day,'events',event2),{eventName:'Ca chiều',day,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(doc(a,'rooms',room,'days',day,'events',event2,'attendance','12300325'),{...scan('12300325'),eventId:event2,eventName:'Ca chiều'}));
+ await assertSucceeds(setDoc(doc(owner,'publicEvents',eventId),{room,day,eventId,updatedAt:serverTimestamp()}));
+ assert.equal((await getDoc(doc(b,'publicEvents',eventId))).data().eventId,eventId);
+});
+
+test('event photo is visible only to its uploader and owner',async()=>{
+ const id='33333333-3333-4333-8333-333333333333',imageData='data:image/jpeg;base64,'+'A'.repeat(120);
+ const photo=db=>doc(db,'rooms',room,'days',day,'events',eventId,'unread',id);
+ await assertSucceeds(setDoc(photo(a),{imageData,takenAt:'2026-09-07T10:05:00Z',memberName,memberHash,eventId,eventName:'Ca sáng',uid:'scannerA',createdAt:serverTimestamp()}));
+ await assertSucceeds(getDoc(photo(a)));await assertFails(getDoc(photo(b)));
+ await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'unread')));
+ await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',eventId,'unread')));
+ await assertSucceeds(deleteDoc(photo(owner)));
 });
 test('scanner can upload and view their own photo; only owner can list or delete it',async()=>{
  const id='12345678-1234-1234-1234-123456789abc';

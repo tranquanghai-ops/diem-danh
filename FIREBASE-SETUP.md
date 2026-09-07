@@ -1,4 +1,4 @@
-# Kết nối Firebase cho Điểm danh V2.9
+# Kết nối Firebase cho Điểm danh V3.0
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV chỉ cần mở `https://tranquanghai-ops.github.io/diem-danh/` để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -15,7 +15,7 @@ Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sa
 - Chọn vị trí gần Việt Nam, chẳng hạn Singapore nếu có trong danh sách.
 - Mở tab **Rules**, thay nội dung bằng toàn bộ [firestore.rules](./firestore.rules), rồi nhấn **Publish**.
 
-Quy tắc cho phép người có liên kết tham gia đọc và thêm điểm danh sau khi xác thực ẩn danh. Người quét không sửa hoặc xóa bản ghi đã có. Chỉ tài khoản tạo danh sách được xóa. Liên kết tham gia cấp quyền vào danh sách, nên gửi cho những SV phụ trách quét.
+Quy tắc yêu cầu người quét xác nhận đúng tên trong danh sách thành viên của sự kiện. Người quét không thể tải danh sách tên, sửa hoặc xóa bản ghi đã có. Chỉ tài khoản Google của giảng viên quản lý sự kiện và dữ liệu.
 
 ## 3. Bật đăng nhập
 
@@ -32,31 +32,32 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V2.9.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V3.0.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V2.9**.
-- Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Danh sách dùng chung được thiết lập tự động, không có bước tạo đợt và không cần dán lại `firebaseConfig`.
-- Khi thấy **Đã đồng bộ danh sách chung**, hệ thống đã kích hoạt trang quét mặc định. Nút **Lấy link cho SV quét** sao chép địa chỉ ngắn, không chứa mã cấu hình.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V3.0**.
+- Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Không cần dán lại `firebaseConfig`.
+- Chọn ngày, nhấn **Tạo sự kiện**, nhập tên sự kiện và danh sách thành viên, mỗi dòng một họ tên.
+- Nút **Dùng tại link chính** đưa sự kiện đang chọn lên `https://tranquanghai-ops.github.io/diem-danh/`. Nút **Sao chép link sự kiện** tạo liên kết riêng, phù hợp khi có 2–3 sự kiện hoạt động cùng ngày.
 - Trên điện thoại SV, mở `https://tranquanghai-ops.github.io/diem-danh/` bằng Chrome. Trang tự tìm danh sách chung và ghi nhớ kết nối.
 - Khi đổi điện thoại quản lý, mở cùng liên kết và đăng nhập đúng tài khoản Google ban đầu.
 
 ## Cách dùng mỗi ngày
 
-- Danh sách mặc định theo **ngày tại Việt Nam (UTC+7)**. Mỗi MSSV được ghi một lần trong ngày; ngày tiếp theo có thể điểm danh lại, không cần tạo đợt.
-- Trang quản lý cho phép đặt một **tên sự kiện riêng cho từng ngày**; tên được lưu trên Firebase và chỉ tài khoản quản lý được sửa.
-- Các máy phải dùng cùng liên kết và cùng ngày. Có thể chọn ngày cũ để xem/xuất Excel; việc quét chỉ dành cho ngày hôm nay.
-- Nếu để trang qua nửa đêm hoặc đang xem ngày cũ, lượt quét mới sẽ tự chuyển về danh sách hôm nay.
+- Mỗi sự kiện có tên, ngày, danh sách thành viên, liên kết và dữ liệu điểm danh riêng. Có thể tạo nhiều sự kiện trong cùng ngày.
+- Thành viên mở đúng liên kết, nhập đúng họ tên đã được GV thêm rồi mới có thể mở camera, nhập MSSV hoặc gửi ảnh.
+- Liên kết chính chỉ trỏ đến một sự kiện tại một thời điểm. Với nhiều sự kiện đồng thời, gửi liên kết riêng của từng sự kiện.
+- Danh sách trên màn hình hiển thị mới nhất ở trên; Excel/CSV xuất theo thứ tự thời gian từ cũ đến mới.
+- Ảnh chụp không quét được được lưu thành dòng **Hình chụp**. Người chụp và GV có thể mở, phóng to để kiểm tra; GV nhập MSSV hoặc xóa ảnh sau đó.
 - **Đã nhận mã — chờ gửi**: mã đã được lưu vào hàng đợi của điện thoại, chưa được máy chủ xác nhận.
 - **Đã lưu trực tuyến**: máy chủ đã xác nhận. Có thể đổi người hoặc máy mà không mất bản ghi này.
 - **Đã điểm danh trên danh sách chung**: MSSV đã tồn tại; không thêm dòng và không ghi đè thời gian.
 - Nếu mất mạng sau khi đã kết nối, lượt quét mới được giữ trên máy. Khi có mạng, ứng dụng gửi lại tự động. Nếu tải lại trang khi đang mất mạng, cần kết nối lại Firebase trước khi nhận lượt quét mới; các lượt chờ cũ vẫn còn.
 - Trước khi bàn giao điện thoại, kiểm tra **0 lượt chờ gửi**. Đừng xóa dữ liệu trình duyệt khi còn lượt chờ.
-- Dữ liệu quét cũ ở chế độ lưu trên máy được giữ riêng, không tự đưa lên Firebase. Chuyển về lưu trên máy để xem lại.
-- **Excel/CSV/JSON** xuất danh sách đang xem; dòng chờ gửi được ghi rõ trạng thái. JSON có thêm danh sách chờ và dữ liệu cục bộ để đối chiếu. Khôi phục JSON chỉ áp dụng ở chế độ cục bộ, không ghi đè Firebase và không tự gửi hàng đợi từ file.
-- Người quản lý có thể xóa các bản ghi đang hiển thị: dừng quét trên tất cả máy, đợi gửi hết hàng đợi, xuất file rồi xóa. Bản ghi đến sau thời điểm xác nhận xóa không nằm trong danh sách xóa này.
+- **Excel/CSV/JSON** xuất sự kiện đang chọn. Tên tệp gồm tên sự kiện và ngày.
+- Người quản lý có thể xóa từng lượt quét sai hoặc xóa toàn bộ lượt điểm danh của sự kiện đang chọn.
 
 ## Lưu lượng
 
