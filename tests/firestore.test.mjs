@@ -47,3 +47,18 @@ test('anonymous users cannot create rooms or change room ownership',async()=>{
  await assertFails(setDoc(doc(a,'rooms','b'.repeat(48)),{ownerUid:'scannerA',createdAt:serverTimestamp()}));
  await assertFails(setDoc(doc(owner,'rooms',room),{ownerUid:'scannerA',createdAt:serverTimestamp()}));
 });
+test('only owner can name a day; participants can read the name',async()=>{
+ const dayRef=doc(owner,'rooms',room,'days',day);
+ await assertSucceeds(setDoc(dayRef,{eventName:'Điểm danh Đồ án Nội thất 4',updatedAt:serverTimestamp()}));
+ assert.equal((await getDoc(doc(a,'rooms',room,'days',day))).data().eventName,'Điểm danh Đồ án Nội thất 4');
+ await assertFails(setDoc(doc(a,'rooms',room,'days',day),{eventName:'Đổi trái phép',updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(dayRef,{eventName:'',updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(dayRef,{eventName:'x'.repeat(101),updatedAt:serverTimestamp()}));
+});
+test('owner can publish the default scanner room; anonymous users can only read it',async()=>{
+ const ownerDefault=doc(owner,'public','default');
+ await assertSucceeds(setDoc(ownerDefault,{room,updatedAt:serverTimestamp()}));
+ assert.equal((await getDoc(doc(a,'public','default'))).data().room,room);
+ await assertFails(setDoc(doc(a,'public','default'),{room,updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(ownerDefault,{room:'b'.repeat(48),updatedAt:serverTimestamp()}));
+});
