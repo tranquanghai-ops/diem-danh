@@ -1,4 +1,4 @@
-# Kết nối Firebase cho Điểm danh V2.2
+# Kết nối Firebase cho Điểm danh V2.3
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV chỉ cần mở `https://tranquanghai-ops.github.io/diem-danh/` để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -32,12 +32,12 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V2.2.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V2.3.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V2.2**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V2.3**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Danh sách dùng chung được thiết lập tự động, không có bước tạo đợt và không cần dán lại `firebaseConfig`.
 - Khi thấy **Đã đồng bộ danh sách chung**, hệ thống đã kích hoạt trang quét mặc định. Nút **Lấy link cho SV quét** sao chép địa chỉ ngắn, không chứa mã cấu hình.
 - Trên điện thoại SV, mở `https://tranquanghai-ops.github.io/diem-danh/` bằng Chrome. Trang tự tìm danh sách chung và ghi nhớ kết nối.

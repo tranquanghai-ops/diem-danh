@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=2.2';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=2.3';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 
@@ -26,7 +26,7 @@ function render(){
   $('savedCount').textContent=list.filter(r=>r.status!=='Chờ gửi').length;$('pendingCount').textContent=pending;
   for(const id of ['excelBtn','csvBtn','jsonBtn'])$(id).disabled=!cloud.connected;
   $('deleteBtn').disabled=!cloud.owner||!cloud.serverReady||pending>0;
-  $('rows').innerHTML=list.map((r,i)=>`<tr><td>${i+1}</td><td><b>${escapeHtml(r.mssv)}</b></td><td>${escapeHtml(time(r.time))}</td><td>${escapeHtml(r.status||'Đã lưu')}</td></tr>`).join('');
+  $('rows').innerHTML=list.map((r,i)=>`<tr><td>${i+1}</td><td><b>${escapeHtml(r.mssv)}</b></td><td>${escapeHtml(r.scannerName||'Không ghi nhận')}</td><td>${escapeHtml(time(r.time))}</td><td>${escapeHtml(r.status||'Đã lưu')}</td></tr>`).join('');
   $('empty').hidden=!!list.length;
 }
 function escapeHtml(s){return String(s).replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));}
@@ -47,10 +47,10 @@ $('eventName').onkeydown=e=>{if(e.key==='Enter'&&!$('saveEventBtn').disabled)$('
 $('localBtn').onclick=action(()=>cloud.disconnect());
 $('deleteBtn').onclick=action(()=>cloud.clearVisible());
 
-function exportRows(){return rows().map((r,i)=>({STT:i+1,MSSV:r.mssv,'Thời gian':time(r.time),'Trạng thái':r.status||'Đã lưu'}));}
+function exportRows(){return rows().map((r,i)=>({STT:i+1,MSSV:r.mssv,'Người quét':r.scannerName||'Không ghi nhận','Thời gian':time(r.time),'Trạng thái':r.status||'Đã lưu'}));}
 function filename(ext){return `diem_danh_${cloud.day}.${ext}`;}
-$('excelBtn').onclick=()=>{const ws=XLSX.utils.json_to_sheet(exportRows());ws['!cols']=[{wch:7},{wch:18},{wch:23},{wch:18}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Diem danh');XLSX.writeFile(wb,filename('xlsx'));};
-$('csvBtn').onclick=()=>{const values=[['STT','MSSV','Thời gian','Trạng thái'],...exportRows().map(r=>[r.STT,r.MSSV,r['Thời gian'],r['Trạng thái']])];download(new Blob(['\ufeff'+values.map(a=>a.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),filename('csv'));};
+$('excelBtn').onclick=()=>{const ws=XLSX.utils.json_to_sheet(exportRows());ws['!cols']=[{wch:7},{wch:18},{wch:28},{wch:23},{wch:18}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Diem danh');XLSX.writeFile(wb,filename('xlsx'));};
+$('csvBtn').onclick=()=>{const values=[['STT','MSSV','Người quét','Thời gian','Trạng thái'],...exportRows().map(r=>[r.STT,r.MSSV,r['Người quét'],r['Thời gian'],r['Trạng thái']])];download(new Blob(['\ufeff'+values.map(a=>a.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),filename('csv'));};
 $('jsonBtn').onclick=()=>download(new Blob([JSON.stringify({day:cloud.day,exportedAt:new Date().toISOString(),attendance:rows(),pending:cloud.outbox?.entries()||[]},null,2)],{type:'application/json'}),filename('json'));
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f172a">
-  <title>Quản lý điểm danh V2.2</title>
+  <title>Quản lý điểm danh V2.3</title>
   <style>
     :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#2563eb;--success:#16a34a;--danger:#dc2626}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -22,7 +22,7 @@
 </head>
 <body>
 <main class="app">
-  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V2.2</span></div><a class="button" href="../">Mở máy quét</a></header>
+  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V2.3</span></div><a class="button" href="../">Mở máy quét</a></header>
 
   <section class="card">
     <div id="adminStatus" class="status" role="status">Đang kiểm tra cấu hình…</div>
@@ -41,7 +41,7 @@
     <div class="row"><input id="eventName" maxlength="100" placeholder="Ví dụ: Điểm danh lớp Đồ án Nội thất 4" style="flex:1;min-width:240px"><button id="saveEventBtn" class="primary" disabled>Lưu tên</button></div>
     <div class="stats"><div class="stat"><b id="savedCount">0</b>Đã lưu</div><div class="stat"><b id="pendingCount">0</b>Chờ gửi trên máy này</div></div>
     <div class="buttons"><button id="excelBtn" class="success" disabled>↓ Excel</button><button id="csvBtn" disabled>↓ CSV</button><button id="jsonBtn" disabled>Sao lưu JSON</button><button id="deleteBtn" class="danger" disabled>Xóa ngày đang xem</button></div>
-    <div class="table-wrap"><table><thead><tr><th>STT</th><th>MSSV</th><th>Thời gian</th><th>Trạng thái</th></tr></thead><tbody id="rows"></tbody></table><p id="empty" class="note" style="text-align:center">Chưa có dữ liệu.</p></div>
+    <div class="table-wrap"><table><thead><tr><th>STT</th><th>MSSV</th><th>Người quét</th><th>Thời gian</th><th>Trạng thái</th></tr></thead><tbody id="rows"></tbody></table><p id="empty" class="note" style="text-align:center">Chưa có dữ liệu.</p></div>
   </section>
 
   <details class="card" id="setupBox">
@@ -54,6 +54,6 @@
   </details>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module" src="./admin-ui.mjs?v=2.2"></script>
+<script type="module" src="./admin-ui.mjs?v=2.3"></script>
 </body>
 </html>

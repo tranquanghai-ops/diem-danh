@@ -57,11 +57,14 @@ service cloud.firestore {
         allow list: if accessible() && owner(room);
         allow create: if accessible()
           && mssv.matches('^[A-Za-z0-9_-]{1,64}$')
-          && request.resource.data.keys().hasAll(['mssv','scannedAt','source','requestId','uid','createdAt'])
-          && request.resource.data.keys().hasOnly(['mssv','scannedAt','source','requestId','uid','createdAt'])
+          && request.resource.data.keys().hasAll(['mssv','scannedAt','source','scannerName','requestId','uid','createdAt'])
+          && request.resource.data.keys().hasOnly(['mssv','scannedAt','source','scannerName','requestId','uid','createdAt'])
           && request.resource.data.mssv == mssv
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.source in ['camera','manual']
+          && request.resource.data.scannerName is string
+          && request.resource.data.scannerName.size() > 0
+          && request.resource.data.scannerName.size() <= 80
           && request.resource.data.requestId is string && request.resource.data.requestId.size() == 36
           && request.resource.data.scannedAt is string && request.resource.data.scannedAt.size() <= 32
           && request.resource.data.createdAt == request.time;

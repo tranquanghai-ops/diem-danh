@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.2</title>
+  <title>Điểm danh Barcode - MSSV V2.3</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -72,12 +72,17 @@
     .table-wrap{max-height:320px}table{min-width:0;width:100%;font-size:12px}th,td{padding:10px 6px}
     .settings summary{cursor:pointer;font-size:14px;font-weight:650}
     .settings[open] summary{margin-bottom:16px}
+    .scanner-name{margin-bottom:12px}.scanner-name input{font-size:16px;font-weight:650}
+    footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.6;padding:22px 8px 2px}
     @media(max-width:520px){th:last-child,td:last-child{display:none}.status{top:6px}.buttons{gap:6px}}
   </style>
 </head>
 <body>
 <div class="app">
-  <header><h1>Điểm danh sinh viên</h1><span class="subtitle">V2.2</span></header>
+  <section class="card scanner-name">
+    <label for="scannerName">Tên người quét</label>
+    <input id="scannerName" maxlength="80" autocomplete="name" placeholder="Nhập họ tên người đang phụ trách quét" />
+  </section>
 
   <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">
     <div class="status-title">Sẵn sàng điểm danh</div>
@@ -123,6 +128,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
+  <footer><div>Điểm danh sinh viên • V2.3</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -140,6 +146,7 @@
   'use strict';
 
   const STORAGE_KEY = 'barcodeAttendanceApp_v1';
+  const SCANNER_NAME_KEY = 'attendance_scanner_name_v1';
   const state = {
     data: loadData(),
     reader: null,
@@ -154,6 +161,17 @@
   const video = $('video');
   const statusBox = $('status');
   const cameraSelect = $('cameraSelect');
+  const scannerNameInput = $('scannerName');
+  scannerNameInput.value = localStorage.getItem(SCANNER_NAME_KEY) || '';
+
+  function scannerName(){ return scannerNameInput.value.trim(); }
+  function requireScannerName(){
+    const name=scannerName();
+    if(name) return name;
+    setStatus('error','Chưa có tên người quét.','Nhập họ tên người phụ trách quét ở ô phía trên.');
+    scannerNameInput.focus();return '';
+  }
+  scannerNameInput.addEventListener('input',()=>localStorage.setItem(SCANNER_NAME_KEY,scannerNameInput.value.trim()));
 
   function normalizeData(d){
     if(!d || typeof d !== 'object') throw new Error('File không đúng định dạng.');
@@ -247,6 +265,7 @@
   }
   async function startScanner(){
     void unlockAudio();
+    if(!requireScannerName())return;
     if(!navigator.mediaDevices?.getUserMedia){
       setStatus('error','Trình duyệt không cho dùng camera.','Mở đường dẫn HTTPS trực tiếp trong trình duyệt điện thoại.'); return;
     }
@@ -302,6 +321,7 @@
   }
 
   function handleScan(raw, source){
+    const operator=requireScannerName();if(!operator)return;
     const mssv=normalizeMssv(raw); if(!mssv) return;
     // Avoid repeated decoder callbacks for the same physical barcode for a short window.
     const now=Date.now();
@@ -312,7 +332,7 @@
       return;
     }
     if(window.attendanceCloud?.enabled){
-      window.attendanceCloud.scan(mssv,source).catch(e=>setStatus('error','Chưa ghi nhận.',e.message));return;
+      window.attendanceCloud.scan(mssv,source,operator).catch(e=>setStatus('error','Chưa ghi nhận.',e.message));return;
     }
     const batch=currentBatch(); if(!batch) return;
     batch.scanCount=(batch.scanCount||0)+1;
@@ -320,7 +340,7 @@
     if(exists){
       batch.duplicateCount=(batch.duplicateCount||0)+1; saveData(); render(); setStatus('warn','Đã điểm danh trước đó.',mssv); beep(false); return;
     }
-    batch.attendance.push({mssv,time:nowIso(),source:source||'camera'});
+    batch.attendance.push({mssv,time:nowIso(),source:source||'camera',scannerName:operator});
     saveData(); render(); setStatus('success','✓ Điểm danh thành công.', 'MSSV: '+mssv); beep(true);
   }
   let audioContext = null;
@@ -382,19 +402,19 @@
   $('stopBtn').onclick=async()=>{ await stopScanner(); setStatus('', 'Đã dừng camera.'); };
   cameraSelect.onchange=async()=>{ if(state.scanning) await startScanner(); };
 
-  $('manualBtn').onclick=()=>{ void unlockAudio(); $('manualMssv').value=''; $('manualDialog').showModal(); setTimeout(()=>$('manualMssv').focus(),50); };
+  $('manualBtn').onclick=()=>{ void unlockAudio(); if(!requireScannerName())return; $('manualMssv').value=''; $('manualDialog').showModal(); setTimeout(()=>$('manualMssv').focus(),50); };
   $('cancelManual').onclick=()=>$('manualDialog').close();
   $('saveManual').onclick=()=>{ void unlockAudio(); const v=$('manualMssv').value.trim(); if(!v){alert('Vui lòng nhập MSSV.');return;} handleScan(v,'manual'); $('manualDialog').close(); };
   $('manualMssv').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveManual').click();});
 
   function rowsForExport(){
     const b=currentBatch();
-    return (b?.attendance||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
+    return (b?.attendance||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,Người_quét:r.scannerName||'Không ghi nhận',Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
   }
   $('excelBtn').onclick=()=>{
     if(!window.XLSX){alert('Không tải được thư viện Excel. Kiểm tra Internet rồi thử lại.');return;}
     const ws=XLSX.utils.json_to_sheet(rowsForExport());
-    ws['!cols']=[{wch:7},{wch:18},{wch:22},{wch:14}];
+    ws['!cols']=[{wch:7},{wch:18},{wch:28},{wch:22},{wch:14}];
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Diem danh');
     XLSX.writeFile(wb,'diem_danh_'+(window.attendanceCloud?.enabled?window.attendanceCloud.day:new Date().toLocaleDateString('sv-SE'))+'.xlsx');
   };
@@ -408,6 +428,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.2"></script>
+<script type="module" src="./cloud-ui.mjs?v=2.3"></script>
 </body>
 </html>

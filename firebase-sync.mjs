@@ -116,9 +116,12 @@ export class FirebaseAttendance {
     for(const r of this.outbox?.entries()||[]){if(r.day===this.day&&!map.has(r.mssv))map.set(r.mssv,{...r,status:'Chờ gửi'});}
     return [...map.values()].sort((a,b)=>a.time.localeCompare(b.time));
   }
-  async scan(mssv,source='camera'){
+  async scan(mssv,source='camera',scannerName=''){
     if(!this.connected)throw new Error('Chưa kết nối được danh sách chung. Nhấn “Kết nối lại”.');
     if(!validMssv(mssv))throw new Error('MSSV chỉ gồm chữ, số, dấu gạch ngang hoặc gạch dưới; tối đa 64 ký tự.');
+    scannerName=String(scannerName||'').trim();
+    if(!scannerName)throw new Error('Vui lòng nhập tên người quét.');
+    if(scannerName.length>80)throw new Error('Tên người quét tối đa 80 ký tự.');
     const today=vietnamDay();
     // If the page remains open overnight (or the manager was viewing an older day),
     // scanning always returns to today's shared list automatically.
@@ -130,7 +133,7 @@ export class FirebaseAttendance {
       else {this.duplicates++;this.notice('duplicate',mssv);}
       this.change();return;
     }
-    const r={mssv,source,time:new Date().toISOString(),day:this.day,requestId:crypto.randomUUID()};
+    const r={mssv,source,scannerName,time:new Date().toISOString(),day:this.day,requestId:crypto.randomUUID()};
     // Storage errors stop acceptance: never claim an unsaved scan is queued.
     this.outbox.put(r);this.notice('pending',mssv);this.change();void this.flush();
   }
@@ -140,7 +143,7 @@ export class FirebaseAttendance {
     return a.runTransaction(this.db,async tx=>{
       const existing=await tx.get(ref);
       if(existing.exists())return {kind:existing.data().requestId===record.requestId?'saved':'duplicate',data:existing.data()};
-      const data={mssv:record.mssv,scannedAt:record.time,source:record.source,requestId:record.requestId,uid:this.auth.currentUser.uid,createdAt:a.serverTimestamp()};
+      const data={mssv:record.mssv,scannedAt:record.time,source:record.source,scannerName:record.scannerName||'Không rõ (dữ liệu cũ)',requestId:record.requestId,uid:this.auth.currentUser.uid,createdAt:a.serverTimestamp()};
       tx.set(ref,data);
       return {kind:'saved',data};
     });

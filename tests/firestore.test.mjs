@@ -5,7 +5,7 @@ import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/ru
 import {doc,setDoc,getDoc,deleteDoc,collection,getDocs,query,where,runTransaction,serverTimestamp} from 'firebase/firestore';
 const room='a'.repeat(48),day='2026-09-07';let env,owner,a,b;
 const ref=(db,mssv)=>doc(db,'rooms',room,'days',day,'attendance',mssv);
-const payload=(uid,mssv,id)=>({uid,mssv,requestId:id,source:'camera',scannedAt:'2026-09-07T09:00:00Z',createdAt:serverTimestamp()});
+const payload=(uid,mssv,id)=>({uid,mssv,requestId:id,source:'camera',scannerName:'Nguyễn Văn A',scannedAt:'2026-09-07T09:00:00Z',createdAt:serverTimestamp()});
 before(async()=>{
  env=await initializeTestEnvironment({projectId:'demo-attendance',firestore:{host:'127.0.0.1',port:8088,rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});
  owner=env.authenticatedContext('teacher',{firebase:{sign_in_provider:'google.com'}}).firestore();
@@ -41,6 +41,8 @@ test('rules validate identity, code, timestamp, and extra fields',async()=>{
  await assertFails(setDoc(ref(a,'bad2'),payload('scannerA','different','a'.repeat(36))));
  await assertFails(setDoc(ref(a,'bad3'),{...payload('scannerA','bad3','a'.repeat(36)),admin:true}));
  await assertFails(setDoc(ref(a,'bad4'),{...payload('scannerA','bad4','a'.repeat(36)),createdAt:new Date(0)}));
+ await assertFails(setDoc(ref(a,'bad5'),{...payload('scannerA','bad5','a'.repeat(36)),scannerName:''}));
+ await assertFails(setDoc(ref(a,'bad6'),{...payload('scannerA','bad6','a'.repeat(36)),scannerName:'x'.repeat(81)}));
  await assertSucceeds(setDoc(ref(a,'00234'),payload('scannerA','00234','a'.repeat(36))));
  await assertSucceeds(deleteDoc(ref(owner,'00234')));
 });
