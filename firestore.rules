@@ -72,6 +72,27 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if accessible() && owner(room);
       }
+      match /days/{day}/unread/{photoId} {
+        function accessible() {
+          return signedIn() && exists(/databases/$(database)/documents/rooms/$(room))
+            && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+        }
+        allow create: if accessible() && photoId.matches('^[a-f0-9-]{36}$')
+          && request.resource.data.keys().hasAll(['imageData','scannerName','takenAt','uid','createdAt'])
+          && request.resource.data.keys().hasOnly(['imageData','scannerName','takenAt','uid','createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.scannerName is string
+          && request.resource.data.scannerName.size() > 0
+          && request.resource.data.scannerName.size() <= 80
+          && request.resource.data.takenAt is string && request.resource.data.takenAt.size() <= 32
+          && request.resource.data.imageData is string
+          && request.resource.data.imageData.size() > 100
+          && request.resource.data.imageData.size() <= 450000
+          && request.resource.data.imageData.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+          && request.resource.data.createdAt == request.time;
+        allow get, list, delete: if accessible() && owner(room);
+        allow update: if false;
+      }
     }
   }
 }

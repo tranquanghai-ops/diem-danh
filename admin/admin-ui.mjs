@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=2.7';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=2.8';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 
@@ -26,8 +26,10 @@ function render(){
   $('savedCount').textContent=list.filter(r=>r.status!=='Chờ gửi').length;$('pendingCount').textContent=pending;
   for(const id of ['excelBtn','csvBtn','jsonBtn'])$(id).disabled=!cloud.connected;
   $('deleteBtn').disabled=!cloud.owner||!cloud.serverReady||pending>0;
-  $('rows').innerHTML=list.map((r,i)=>`<tr><td>${i+1}</td><td><b>${escapeHtml(r.mssv)}</b></td><td>${escapeHtml(r.scannerName||'Không ghi nhận')}</td><td>${escapeHtml(time(r.time))}</td><td>${escapeHtml(r.status||'Đã lưu')}</td></tr>`).join('');
+  $('rows').innerHTML=[...list].reverse().map((r,i)=>`<tr><td>${list.length-i}</td><td><b>${escapeHtml(r.mssv)}</b></td><td>${escapeHtml(r.scannerName||'Không ghi nhận')}</td><td>${escapeHtml(time(r.time))}</td><td>${escapeHtml(r.status||'Đã lưu')}</td></tr>`).join('');
   $('empty').hidden=!!list.length;
+  const photos=cloud.photos||[];$('photoCount').textContent=photos.length+' ảnh';$('photoEmpty').hidden=!!photos.length;
+  $('photoList').innerHTML=photos.map(p=>`<article class="photo-card"><img src="${escapeHtml(p.imageData)}" alt="Ảnh thẻ chờ nhập MSSV"><p class="note">Người quét: <b>${escapeHtml(p.scannerName||'Không rõ')}</b><br>${escapeHtml(time(p.takenAt))}</p><input data-photo-input="${escapeHtml(p.id)}" maxlength="12" placeholder="Nhập MSSV"><div class="buttons"><button class="primary" data-photo-save="${escapeHtml(p.id)}">Lưu điểm danh</button><button class="danger" data-photo-delete="${escapeHtml(p.id)}">Xóa ảnh</button></div></article>`).join('');
 }
 function escapeHtml(s){return String(s).replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));}
 function action(fn){return async()=>{try{await fn();render();}catch(e){cloud.error(e);$('adminStatus').className='status error';$('adminStatus').textContent=cloud.message;}};}
@@ -44,6 +46,11 @@ $('eventName').oninput=()=>{editingEvent=true;};
 $('saveEventBtn').onclick=action(async()=>{await cloud.saveEventName($('eventName').value);editingEvent=false;});
 $('eventName').onkeydown=e=>{if(e.key==='Enter'&&!$('saveEventBtn').disabled)$('saveEventBtn').click();};
 $('deleteBtn').onclick=action(()=>cloud.clearVisible());
+$('photoList').onclick=async e=>{
+  const save=e.target.closest('[data-photo-save]'),remove=e.target.closest('[data-photo-delete]');
+  if(save){const id=save.dataset.photoSave,input=document.querySelector(`[data-photo-input="${id}"]`);await action(()=>cloud.resolvePhoto(id,input.value))();}
+  if(remove&&confirm('Xóa ảnh chờ này?'))await action(()=>cloud.deletePhoto(remove.dataset.photoDelete))();
+};
 
 function exportRows(){return rows().map((r,i)=>({STT:i+1,MSSV:r.mssv,'Người quét':r.scannerName||'Không ghi nhận','Thời gian':time(r.time),'Trạng thái':r.status||'Đã lưu'}));}
 function safeFilename(value){return String(value||'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,80)||'diem_danh';}

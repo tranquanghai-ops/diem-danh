@@ -3,7 +3,7 @@ const SETTINGS='attendance_firebase_v1';
 const sdkBase='https://www.gstatic.com/firebasejs/12.18.0/';
 export class FirebaseAttendance {
   constructor({change=()=>{},notice=()=>{},scannerUrl='./'}={}){
-    this.change=change;this.notice=notice;this.rows=[];this.day=vietnamDay();this.eventName='';this.scans=0;this.duplicates=0;
+    this.change=change;this.notice=notice;this.rows=[];this.photos=[];this.day=vietnamDay();this.eventName='';this.scans=0;this.duplicates=0;
     this.connected=false;this.enabled=false;this.serverReady=false;this.message='Chưa kết nối Firebase';
     this.scannerUrl=new URL(scannerUrl,location.href);this.scannerUrl.hash='';
     try{this.settings=JSON.parse(localStorage.getItem(SETTINGS)||'null');}catch{this.settings=null;}
@@ -81,7 +81,7 @@ export class FirebaseAttendance {
     this.connected=true;this.message='Đã kết nối danh sách chung';this.subscribe();void this.flush();
   }
   subscribe(){
-    this.unsubscribe?.();this.unsubscribe=null;this.unsubscribeDay?.();this.rows=[];this.eventName='';this.serverReady=false;
+    this.unsubscribe?.();this.unsubscribe=null;this.unsubscribeDay?.();this.unsubscribePhotos?.();this.unsubscribePhotos=null;this.rows=[];this.photos=[];this.eventName='';this.serverReady=false;
     const selected=this.day;
     const cacheKey='attendance_cache_v1:'+this.config.projectId+':'+this.room+':'+selected;
     if(this.owner){
@@ -95,6 +95,11 @@ export class FirebaseAttendance {
         try{localStorage.setItem(cacheKey,JSON.stringify(this.rows));}catch{}
         this.change();
       },error=>{this.serverReady=false;this.error(error);});
+      this.unsubscribePhotos=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'days',selected,'unread'),snapshot=>{
+        if(selected!==this.day)return;
+        this.photos=snapshot.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.takenAt||'').localeCompare(a.takenAt||''));
+        this.change();
+      },error=>this.error(error));
     }else{
       // Scanner accounts can add/check a specific code, but cannot download the class list.
       try{localStorage.removeItem(cacheKey);}catch{}
@@ -212,6 +217,36 @@ export class FirebaseAttendance {
       eventName:name,updatedAt:this.api.serverTimestamp()
     });
     this.eventName=name;this.message='Đã lưu tên sự kiện.';this.change();
+  }
+  async uploadPhoto(imageData,scannerName){
+    if(!this.connected||!navigator.onLine)throw new Error('Cần có Internet để gửi ảnh về trang quản lý.');
+    scannerName=String(scannerName||'').trim();
+    if(!scannerName||scannerName.length>80)throw new Error('Tên người quét không hợp lệ.');
+    if(typeof imageData!=='string'||!imageData.startsWith('data:image/jpeg;base64,')||imageData.length>450000)throw new Error('Ảnh quá lớn hoặc không hợp lệ.');
+    const id=crypto.randomUUID(),takenAt=new Date().toISOString();
+    await this.api.setDoc(this.api.doc(this.db,'rooms',this.room,'days',this.day,'unread',id),{
+      imageData,scannerName,takenAt,uid:this.auth.currentUser.uid,createdAt:this.api.serverTimestamp()
+    });
+    this.message='Đã gửi ảnh thẻ cho GV xử lý sau.';this.change();
+  }
+  async resolvePhoto(photoId,mssv){
+    if(!this.owner||!this.serverReady)throw new Error('Chỉ tài khoản quản lý có thể xử lý ảnh.');
+    mssv=String(mssv||'').trim().toUpperCase();
+    if(!/^(?=.{8,12}$)(?=.*\d)[A-Z0-9]+$/.test(mssv))throw new Error('MSSV phải gồm 8–12 chữ hoặc số.');
+    const a=this.api,photoRef=a.doc(this.db,'rooms',this.room,'days',this.day,'unread',photoId);
+    const attendanceRef=a.doc(this.db,'rooms',this.room,'days',this.day,'attendance',mssv);
+    const result=await a.runTransaction(this.db,async tx=>{
+      const [photo,attendance]=await Promise.all([tx.get(photoRef),tx.get(attendanceRef)]);
+      if(!photo.exists())throw new Error('Ảnh này đã được xử lý.');
+      if(!attendance.exists())tx.set(attendanceRef,{mssv,scannedAt:photo.data().takenAt,source:'manual',scannerName:photo.data().scannerName,requestId:crypto.randomUUID(),uid:this.auth.currentUser.uid,createdAt:a.serverTimestamp()});
+      tx.delete(photoRef);return attendance.exists()?'duplicate':'saved';
+    });
+    this.message=result==='duplicate'?'MSSV đã có; ảnh chờ đã được xóa.':'Đã bổ sung điểm danh từ ảnh thẻ.';this.change();
+  }
+  async deletePhoto(photoId){
+    if(!this.owner)throw new Error('Chỉ tài khoản quản lý có thể xóa ảnh.');
+    await this.api.deleteDoc(this.api.doc(this.db,'rooms',this.room,'days',this.day,'unread',photoId));
+    this.message='Đã xóa ảnh chờ.';this.change();
   }
   disconnect(){
     if(this.outbox?.entries().length)throw new Error('Còn lượt chờ gửi. Kết nối lại để gửi hết trước khi chuyển về lưu trên máy.');

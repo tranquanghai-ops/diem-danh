@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.7</title>
+  <title>Điểm danh Barcode - MSSV V2.8</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -64,6 +64,7 @@
     .scan-frame{top:32%;height:30%}
     .scan-actions{display:grid;grid-template-columns:1.45fr 1fr;gap:6px}
     .scan-actions button{padding:12px 6px;font-size:14px}
+    .scan-actions .photo{grid-column:1/-1}
     .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
     .stat{text-align:center;padding:8px 4px;background:#f8fafc;border:0}
     .stat b{font-size:24px}.stat span{font-size:12px}
@@ -100,6 +101,7 @@
       <button class="secondary" id="stopBtn" disabled>■ Dừng</button>
       <button class="secondary" id="ocrBtn">▣ Đọc chữ MSSV</button>
       <button class="secondary" id="manualBtn">Nhập MSSV</button>
+      <button class="warn photo" id="photoBtn">📷 Chụp thẻ để GV nhập sau</button>
     </div>
     <div class="stats">
       <div class="stat"><b id="countAttendance">0</b><span class="muted">Có mặt</span></div>
@@ -129,7 +131,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V2.7</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V2.8</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -228,9 +230,9 @@
     $('countDuplicates').textContent = batch?.duplicateCount || 0;
     const body = $('attendanceBody'); body.innerHTML='';
     $('emptyTable').style.display = rows.length ? 'none' : 'block';
-    rows.forEach((r,i)=>{
+    [...rows].reverse().forEach((r,i)=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>'+(i+1)+'</td><td><b>'+escapeHtml(r.mssv)+'</b></td><td>'+escapeHtml(fmtTime(r.time))+'</td><td><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
+      tr.innerHTML = '<td>'+(rows.length-i)+'</td><td><b>'+escapeHtml(r.mssv)+'</b></td><td>'+escapeHtml(fmtTime(r.time))+'</td><td><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
       body.appendChild(tr);
     });
   }
@@ -490,7 +492,7 @@
       const worker=await Tesseract.createWorker('eng',1,{logger:m=>{
         if(m.status==='recognizing text')setStatus('', 'Đang đọc chữ MSSV…',Math.round((m.progress||0)*100)+'%');
       }});
-      await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:',tessedit_pageseg_mode:'7'});
+      await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789: ',tessedit_pageseg_mode:'6'});
       return worker;
     })();
     try{ocrWorker=await ocrLoading;return ocrWorker;}catch(e){ocrLoading=null;throw e;}
@@ -506,21 +508,46 @@
     const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.8)';ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
     return canvas;
   }
+  function captureFullCard(maxWidth=1200){
+    if(!state.scanning||video.readyState<2)throw new Error('Hãy bắt đầu camera trước.');
+    const scale=Math.min(1,maxWidth/video.videoWidth),canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
+    const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.45)';ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    return canvas;
+  }
   $('ocrBtn').onclick=async()=>{
     if(!requireScannerName())return;
     $('ocrBtn').disabled=true;
     try{
-      setStatus('', 'Đang chuẩn bị đọc chữ…','Đặt riêng dòng MSSV và dãy ký tự vào khung trắng.');
-      const canvas=captureScanFrame(),worker=await getOcrWorker(),result=await worker.recognize(canvas);
+      setStatus('', 'Đang chuẩn bị đọc chữ…','Giữ toàn bộ mặt thẻ rõ và thẳng trong camera.');
+      const canvas=captureFullCard(),worker=await getOcrWorker(),result=await worker.recognize(canvas);
       const text=String(result.data.text||'').toUpperCase().replace(/[^A-Z0-9: ]/g,' ');
-      const labelled=text.match(/MSSV\s*:?\s*([A-Z0-9]{8,12})/);
+      const labelled=text.match(/M[S5][S5]V\s*:?\s*([A-Z0-9]{8,12})/);
       const candidates=text.match(/[A-Z0-9]{8,12}/g)||[];
-      const mssv=normalizeMssv(labelled?.[1]||candidates.find(validStudentId)||'');
-      if(!validStudentId(mssv))throw new Error('Không đọc rõ MSSV. Đưa dòng MSSV vào giữa khung, giữ máy thẳng và thử lại.');
-      if(confirm('Ứng dụng đọc được MSSV: '+mssv+'\n\nXác nhận ghi điểm danh?'))handleScan(mssv,'camera');
-      else setStatus('warn','Đã hủy kết quả OCR.','Hãy căn lại dòng MSSV rồi đọc lại.');
+      const suggested=normalizeMssv(labelled?.[1]||candidates.find(validStudentId)||'');
+      const entered=prompt('Kết quả đọc chữ MSSV. Hãy kiểm tra hoặc sửa lại trước khi lưu:',suggested);
+      if(entered===null){setStatus('warn','Đã hủy kết quả OCR.');return;}
+      const mssv=normalizeMssv(entered);
+      if(!validStudentId(mssv))throw new Error('Không đọc rõ MSSV. Có thể chụp thẻ để GV nhập lại sau.');
+      handleScan(mssv,'camera');
     }catch(e){setStatus('error','Không đọc được chữ MSSV.',e.message||'Vui lòng thử lại.');}
     finally{$('ocrBtn').disabled=false;}
+  };
+  $('photoBtn').onclick=async()=>{
+    const operator=requireScannerName();if(!operator)return;
+    $('photoBtn').disabled=true;
+    try{
+      const cloud=window.attendanceCloud;
+      if(!cloud?.connected)throw new Error('Chưa kết nối danh sách chung.');
+      const canvas=captureFullCard(960);
+      let imageData=canvas.toDataURL('image/jpeg',.6);
+      if(imageData.length>450000)imageData=canvas.toDataURL('image/jpeg',.4);
+      if(imageData.length>450000)throw new Error('Ảnh vẫn quá lớn. Đưa thẻ gần hơn rồi chụp lại.');
+      await cloud.uploadPhoto(imageData,operator);
+      setStatus('success','✓ Đã gửi ảnh cho GV.','Ảnh đang chờ nhập MSSV trên trang quản lý.');
+      void beep(true);
+    }catch(e){setStatus('error','Không gửi được ảnh.',e.message||'Vui lòng thử lại.');}
+    finally{$('photoBtn').disabled=false;}
   };
 
   function rowsForExport(){
@@ -549,6 +576,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.7"></script>
+<script type="module" src="./cloud-ui.mjs?v=2.8"></script>
 </body>
 </html>
