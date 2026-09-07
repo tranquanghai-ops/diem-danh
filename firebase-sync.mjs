@@ -2,9 +2,10 @@ import {Outbox,parseConfig,validMssv,vietnamDay} from './sync-core.mjs';
 const SETTINGS='attendance_firebase_v1';
 const sdkBase='https://www.gstatic.com/firebasejs/12.18.0/';
 export class FirebaseAttendance {
-  constructor({change=()=>{},notice=()=>{}}={}){
+  constructor({change=()=>{},notice=()=>{},scannerUrl='./'}={}){
     this.change=change;this.notice=notice;this.rows=[];this.day=vietnamDay();this.scans=0;this.duplicates=0;
     this.connected=false;this.enabled=false;this.serverReady=false;this.message='Chưa kết nối Firebase';
+    this.scannerUrl=new URL(scannerUrl,location.href);this.scannerUrl.hash='';
     try{this.settings=JSON.parse(localStorage.getItem(SETTINGS)||'null');}catch{this.settings=null;}
     window.addEventListener('online',()=>void this.flush());
     window.addEventListener('offline',()=>{this.serverReady=false;this.message='Mất mạng — lượt quét mới sẽ chờ gửi';this.change();});
@@ -145,7 +146,7 @@ export class FirebaseAttendance {
   }
   shareLink(){
     if(!this.connected)throw new Error('Kết nối danh sách trước khi chia sẻ.');
-    return location.origin+location.pathname+'#join='+encodeURIComponent(JSON.stringify({config:this.config,room:this.room}));
+    return this.scannerUrl.href+'#join='+encodeURIComponent(JSON.stringify({config:this.config,room:this.room}));
   }
   async acceptLink(link){
     const url=new URL(link);const params=new URLSearchParams(url.hash.slice(1));
