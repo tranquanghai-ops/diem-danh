@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V2.6</title>
+  <title>Điểm danh Barcode - MSSV V2.7</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -129,7 +129,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V2.6</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V2.7</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -156,12 +156,12 @@
     scanning: false,
     lastDecoded: '',
     lastDecodedAt: 0,
-    candidateDecoded: '',
-    candidateCount: 0,
-    candidateAt: 0,
     nativeDetector: null,
     nativeTimer: null,
-    nativeBusy: false
+    nativeBusy: false,
+    enhancedReader: null,
+    enhancedTimer: null,
+    enhancedBusy: false
   };
 
   const $ = id => document.getElementById(id);
@@ -306,6 +306,7 @@
       if(request!==cameraRequest){ controls.stop(); releaseStream(stream); return; }
       state.controls=controls;
       void startNativeBarcodeDetector(request);
+      startEnhancedBarcodeDetector(request);
       cameraSelect.disabled=false;
       setStatus('', 'Camera sau đang quét.', 'Đưa mã vạch trên thẻ vào khung.');
       await listCameras();
@@ -345,21 +346,41 @@
   }
 
   function confirmCameraValue(raw){
-    const value=normalizeMssv(raw),now=Date.now();
+    const value=normalizeMssv(raw);
     if(!validStudentId(value)){
       setStatus('warn','Mã đọc được không phải MSSV.',value.length>12?'Đã bỏ qua dãy số thẻ dài.':'MSSV phải gồm 8–12 chữ hoặc số.');
       return;
     }
-    if(value===state.candidateDecoded && now-state.candidateAt<1800)state.candidateCount++;
-    else{state.candidateDecoded=value;state.candidateCount=1;}
-    state.candidateAt=now;
-    if(state.candidateCount<2){setStatus('', 'Đang xác nhận MSSV…',value);return;}
-    state.candidateDecoded='';state.candidateCount=0;
     handleScan(value,'camera');
+  }
+
+  function startEnhancedBarcodeDetector(request){
+    try{
+      state.enhancedReader=new ZXingBrowser.BrowserMultiFormatReader();
+      state.enhancedReader.possibleFormats=[ZXingBrowser.BarcodeFormat.CODE_128];
+      const detect=()=>{
+        if(request!==cameraRequest||!state.scanning||!state.enhancedReader)return;
+        if(!state.enhancedBusy&&video.readyState>=2){
+          state.enhancedBusy=true;
+          try{
+            // Normalise wide printed bars into a compact, high-contrast scan strip.
+            const source=captureScanFrame(),canvas=document.createElement('canvas');
+            canvas.width=1000;canvas.height=220;
+            const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(2.1)';
+            ctx.drawImage(source,0,0,canvas.width,canvas.height);
+            const result=state.enhancedReader.decodeFromCanvas(canvas);
+            if(result?.getText())confirmCameraValue(result.getText());
+          }catch(e){}finally{state.enhancedBusy=false;}
+        }
+        state.enhancedTimer=setTimeout(detect,450);
+      };
+      state.enhancedTimer=setTimeout(detect,350);
+    }catch(e){}
   }
   function stopScanner(){
     cameraRequest++;
     clearTimeout(state.nativeTimer);state.nativeTimer=null;state.nativeDetector=null;state.nativeBusy=false;
+    clearTimeout(state.enhancedTimer);state.enhancedTimer=null;state.enhancedReader=null;state.enhancedBusy=false;
     try{ state.controls?.stop(); }catch(e){}
     state.controls=null;
     releaseStream(state.stream); state.stream=null;
@@ -376,7 +397,7 @@
     }
     // Avoid repeated decoder callbacks for the same physical barcode for a short window.
     const now=Date.now();
-    if(mssv===state.lastDecoded && now-state.lastDecodedAt<900) return;
+    if(mssv===state.lastDecoded && now-state.lastDecodedAt<2500) return;
     state.lastDecoded=mssv; state.lastDecodedAt=now;
     if(localStorage.getItem('attendance_firebase_v1') && !window.attendanceCloud){
       setStatus('warn','Đang kết nối danh sách chung.','Vui lòng quét lại sau vài giây.');
@@ -528,6 +549,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=2.6"></script>
+<script type="module" src="./cloud-ui.mjs?v=2.7"></script>
 </body>
 </html>
