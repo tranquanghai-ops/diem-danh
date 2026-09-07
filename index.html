@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Điểm danh Barcode - MSSV</title>
+  <style>
+    :root{
+      --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
+      --primary:#2563eb;--primary2:#1d4ed8;--success:#16a34a;--warn:#d97706;--danger:#dc2626;
+      --shadow:0 10px 30px rgba(15,23,42,.08);--radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select{font:inherit}
+    .app{max-width:1150px;margin:0 auto;padding:18px 16px 36px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+    h1{margin:0;font-size:24px}.subtitle{color:var(--muted);font-size:13px;margin-top:4px}
+    .pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;font-size:13px;white-space:nowrap}
+    .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .card h2{font-size:17px;margin:0 0 12px}.card h3{font-size:14px;margin:16px 0 8px}
+    .scanner-wrap{position:relative;overflow:hidden;border-radius:16px;background:#0b1220;aspect-ratio:16/11}
+    video{width:100%;height:100%;object-fit:cover;display:block}
+    .scan-frame{position:absolute;left:12%;right:12%;top:27%;height:26%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.16)}
+    .scan-tip{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;font-size:12px;text-shadow:0 1px 3px #000}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}
+    .buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    button{border:0;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:650}
+    button.primary{background:var(--primary);color:#fff}button.primary:hover{background:var(--primary2)}
+    button.secondary{background:#eaf0f8;color:var(--text)}button.success{background:var(--success);color:#fff}
+    button.warn{background:#fff4df;color:#92400e}button.danger{background:#fee2e2;color:#991b1b}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:650}
+    input,select{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:10px 11px;background:#fff;color:var(--text)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}
+    .status{border-radius:14px;padding:12px;margin-top:12px;background:#eef2ff;border:1px solid #c7d2fe}
+    .status.success{background:#ecfdf5;border-color:#bbf7d0}.status.warn{background:#fffbeb;border-color:#fde68a}.status.error{background:#fef2f2;border-color:#fecaca}
+    .big{font-size:26px;font-weight:800;letter-spacing:.4px}.muted{color:var(--muted)}
+    .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}.stat{padding:12px;border:1px solid var(--line);border-radius:12px}.stat b{font-size:20px;display:block}
+    .table-wrap{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:12px;margin-top:10px}
+    table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}th{background:#f8fafc;position:sticky;top:0;z-index:1}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:750;background:#dcfce7;color:#166534}
+    .empty{padding:25px;text-align:center;color:var(--muted)}
+    .batch-list{display:grid;gap:8px}.batch-item{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfdff}.batch-item.active{border-color:#93c5fd;background:#eff6ff}
+    .batch-title{font-weight:750}.batch-meta{font-size:12px;color:var(--muted);margin-top:3px}
+    .note{font-size:12px;color:var(--muted);line-height:1.5}.kbd{font-family:ui-monospace,monospace;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:1px 5px}
+    dialog{border:0;border-radius:18px;padding:0;width:min(520px,calc(100vw - 32px));box-shadow:0 24px 80px rgba(15,23,42,.25)}dialog::backdrop{background:rgba(2,6,23,.55)}
+    .modal{padding:18px}.modal h2{margin:0 0 14px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+    .topbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    @media(max-width:850px){.grid{grid-template-columns:1fr}.scanner-wrap{aspect-ratio:4/3}.form-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr 1fr}}
+    @media(max-width:520px){.app{padding:12px}.stats{grid-template-columns:1fr}.buttons button{flex:1}.topbar{width:100%}header{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Điểm danh bằng Barcode</h1>
+      <div class="subtitle">Quét mã vạch trên thẻ sinh viên — chỉ lưu MSSV và thời gian.</div>
+    </div>
+    <div class="pill" id="secureHint">Camera cần HTTPS hoặc localhost</div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="row between">
+        <h2>Quét điểm danh</h2>
+        <div class="topbar">
+          <select id="cameraSelect" style="max-width:290px" aria-label="Chọn camera"></select>
+        </div>
+      </div>
+      <div class="scanner-wrap" id="scannerBox">
+        <video id="video" playsinline muted></video>
+        <div class="scan-frame"></div>
+        <div class="scan-tip">Đưa mã vạch vào khung • tự động quét</div>
+      </div>
+      <div class="buttons">
+        <button class="primary" id="startBtn">▶ Bắt đầu quét</button>
+        <button class="secondary" id="stopBtn" disabled>■ Dừng camera</button>
+        <button class="secondary" id="manualBtn">⌨ Nhập MSSV</button>
+      </div>
+      <div id="status" class="status">
+        <div class="muted">Trạng thái</div>
+        <div><b>Chưa bắt đầu quét.</b> Hãy tạo/chọn một đợt điểm danh.</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="muted">Đã có mặt</span><b id="countAttendance">0</b></div>
+        <div class="stat"><span class="muted">Số lượt quét</span><b id="countScans">0</b></div>
+        <div class="stat"><span class="muted">Trùng</span><b id="countDuplicates">0</b></div>
+      </div>
+    </section>
+
+    <aside class="card">
+      <div class="row between"><h2>Đợt điểm danh</h2><button class="primary" id="newBatchBtn">+ Tạo đợt</button></div>
+      <div class="note">Dữ liệu được lưu cục bộ trên thiết bị này bằng trình duyệt. Không gửi MSSV lên Internet.</div>
+      <div id="batchList" class="batch-list" style="margin-top:12px"></div>
+      <h3>Thao tác dữ liệu</h3>
+      <div class="buttons">
+        <button class="success" id="excelBtn">↓ Excel (.xlsx)</button>
+        <button class="secondary" id="csvBtn">↓ CSV</button>
+        <button class="secondary" id="backupBtn">💾 Sao lưu JSON</button>
+        <button class="secondary" id="restoreBtn">↥ Khôi phục</button>
+        <button class="danger" id="deleteBatchBtn">Xóa đợt hiện tại</button>
+      </div>
+      <input id="restoreFile" type="file" accept="application/json,.json" style="display:none" />
+      <h3>Đợt hiện tại</h3>
+      <div id="currentBatchInfo" class="note">Chưa có đợt.</div>
+    </aside>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="row between">
+      <h2>Danh sách đã điểm danh</h2>
+      <button class="secondary" id="clearBtn">Xóa toàn bộ lượt của đợt</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>STT</th><th>MSSV</th><th>Thời gian</th><th>Trạng thái</th></tr></thead>
+        <tbody id="attendanceBody"></tbody>
+      </table>
+      <div id="emptyTable" class="empty">Chưa có sinh viên nào được điểm danh.</div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Hướng dẫn nhanh</h2>
+    <div class="note">
+      1) Nhấn <b>Tạo đợt</b>. 2) Nhấn <b>Bắt đầu quét</b> và cấp quyền camera. 3) Đưa barcode 1D trên thẻ vào khung. 4) App tự lấy chuỗi mã làm MSSV, chống trùng và ghi thời gian. 5) Cuối buổi chọn <b>Excel</b> hoặc <b>CSV</b>.
+      <br><br>Để camera hoạt động khi đưa app lên GitHub Pages, website phải được mở bằng <b>HTTPS</b>.
+    </div>
+  </section>
+</div>
+
+<dialog id="batchDialog">
+  <div class="modal">
+    <h2>Tạo đợt điểm danh</h2>
+    <div class="form-grid">
+      <div class="full"><label for="batchName">Tên sự kiện</label><input id="batchName" placeholder="Ví dụ: Hội thảo chuyên ngành Nội thất" /></div>
+      <div><label for="batchDate">Ngày</label><input id="batchDate" type="date" /></div>
+      <div><label for="batchLocation">Địa điểm (tùy chọn)</label><input id="batchLocation" placeholder="Phòng A..." /></div>
+    </div>
+    <div class="modal-actions"><button class="secondary" id="cancelBatch">Hủy</button><button class="primary" id="saveBatch">Tạo đợt</button></div>
+  </div>
+</dialog>
+
+<dialog id="manualDialog">
+  <div class="modal">
+    <h2>Nhập MSSV thủ công</h2>
+    <label for="manualMssv">MSSV</label><input id="manualMssv" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 123456789011" />
+    <div class="modal-actions"><button class="secondary" id="cancelManual">Hủy</button><button class="primary" id="saveManual">Điểm danh</button></div>
+  </div>
+</dialog>
+
+<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const STORAGE_KEY = 'barcodeAttendanceApp_v1';
+  const state = {
+    data: loadData(),
+    reader: null,
+    controls: null,
+    stream: null,
+    scanning: false,
+    lastDecoded: '',
+    lastDecodedAt: 0
+  };
+
+  const $ = id => document.getElementById(id);
+  const video = $('video');
+  const statusBox = $('status');
+  const cameraSelect = $('cameraSelect');
+
+  function loadData(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return {version:1,batches:[],activeBatchId:null};
+      const parsed = JSON.parse(raw);
+      return {version:1,batches:Array.isArray(parsed.batches)?parsed.batches:[],activeBatchId:parsed.activeBatchId||null};
+    } catch(e){ return {version:1,batches:[],activeBatchId:null}; }
+  }
+  function saveData(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
+  function uid(){ return 'b_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+  function nowIso(){ return new Date().toISOString(); }
+  function fmtTime(iso){ try { return new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium'}).format(new Date(iso)); } catch { return iso; } }
+  function currentBatch(){ return state.data.batches.find(b=>b.id===state.data.activeBatchId) || null; }
+  function normalizeMssv(value){
+    // Barcode may contain only digits in the user's sample. Keep the decoded payload and strip surrounding whitespace.
+    return String(value ?? '').trim();
+  }
+
+  function setStatus(type, title, detail){
+    statusBox.className = 'status' + (type ? ' ' + type : '');
+    statusBox.innerHTML = '<div class="muted">Trạng thái</div><div><b>' + escapeHtml(title) + '</b>' + (detail ? ' ' + escapeHtml(detail) : '') + '</div>';
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+  function render(){
+    renderBatches();
+    const batch = currentBatch();
+    $('currentBatchInfo').innerHTML = batch
+      ? '<b>' + escapeHtml(batch.name) + '</b><br>' + escapeHtml(batch.date || '') + (batch.location ? '<br>' + escapeHtml(batch.location) : '')
+      : 'Chưa có đợt. Nhấn “Tạo đợt”.';
+
+    const rows = batch?.attendance || [];
+    $('countAttendance').textContent = rows.length;
+    $('countScans').textContent = batch?.scanCount || 0;
+    $('countDuplicates').textContent = batch?.duplicateCount || 0;
+    const body = $('attendanceBody'); body.innerHTML='';
+    $('emptyTable').style.display = rows.length ? 'none' : 'block';
+    rows.forEach((r,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+(i+1)+'</td><td><b>'+escapeHtml(r.mssv)+'</b></td><td>'+escapeHtml(fmtTime(r.time))+'</td><td><span class="badge">Có mặt</span></td>';
+      body.appendChild(tr);
+    });
+  }
+  function renderBatches(){
+    const box = $('batchList'); box.innerHTML='';
+    if(!state.data.batches.length){ box.innerHTML='<div class="empty" style="padding:15px">Chưa có đợt nào.</div>'; return; }
+    state.data.batches.slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).forEach(b=>{
+      const div=document.createElement('div'); div.className='batch-item'+(b.id===state.data.activeBatchId?' active':'');
+      div.innerHTML='<div class="row between"><div><div class="batch-title">'+escapeHtml(b.name)+'</div><div class="batch-meta">'+escapeHtml(b.date||'')+(b.location?' • '+escapeHtml(b.location):'')+'</div></div><div class="badge">'+(b.attendance?.length||0)+'</div></div>';
+      div.onclick=()=>{ state.data.activeBatchId=b.id; saveData(); stopScanner(); render(); setStatus('', 'Đã chọn đợt điểm danh.', b.name); };
+      box.appendChild(div);
+    });
+  }
+
+  $('newBatchBtn').onclick=()=>{
+    $('batchName').value=''; $('batchLocation').value=''; $('batchDate').value=new Date().toISOString().slice(0,10);
+    $('batchDialog').showModal();
+  };
+  $('cancelBatch').onclick=()=>$('batchDialog').close();
+  $('saveBatch').onclick=()=>{
+    const name=$('batchName').value.trim(); if(!name){ alert('Vui lòng nhập tên sự kiện.'); return; }
+    const b={id:uid(),name,date:$('batchDate').value,location:$('batchLocation').value.trim(),createdAt:nowIso(),attendance:[],scanCount:0,duplicateCount:0};
+    state.data.batches.push(b); state.data.activeBatchId=b.id; saveData(); $('batchDialog').close(); render(); setStatus('', 'Đã tạo đợt.', b.name);
+  };
+
+  async function listCameras(){
+    try{
+      if(!navigator.mediaDevices?.enumerateDevices) return;
+      // Requesting permission first gives labels on most browsers.
+      let tmp=null;
+      try { tmp=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); } catch(e) {}
+      const devices=await navigator.mediaDevices.enumerateDevices();
+      if(tmp) tmp.getTracks().forEach(t=>t.stop());
+      const cams=devices.filter(d=>d.kind==='videoinput');
+      cameraSelect.innerHTML='';
+      cams.forEach((d,i)=>{ const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('Camera '+(i+1)); cameraSelect.appendChild(o); });
+      const back=cams.find(d=>/back|rear|environment|sau|phía sau/i.test(d.label));
+      if(back) cameraSelect.value=back.deviceId;
+    }catch(e){ cameraSelect.innerHTML='<option>Camera mặc định</option>'; }
+  }
+
+  async function startScanner(){
+    const batch=currentBatch();
+    if(!batch){ alert('Hãy tạo hoặc chọn một đợt điểm danh trước.'); return; }
+    if(location.protocol!=='https:' && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
+      setStatus('warn','Trình duyệt có thể chặn camera.','Hãy mở website bằng HTTPS (GitHub Pages đã có HTTPS).');
+    }
+    if(!window.ZXingBrowser){ setStatus('error','Không tải được bộ đọc barcode.','Kiểm tra kết nối Internet rồi tải lại trang.'); return; }
+    await stopScanner();
+    try{
+      state.reader = new ZXingBrowser.BrowserMultiFormatReader();
+      const deviceId = cameraSelect.value || undefined;
+      state.scanning=true;
+      $('startBtn').disabled=true; $('stopBtn').disabled=false;
+      setStatus('', 'Đang mở camera…', 'Đưa barcode 1D vào khung trắng.');
+      state.controls = await state.reader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+        if(result){ handleScan(result.getText(), 'camera'); }
+      });
+      state.stream = video.srcObject;
+      await listCameras();
+    }catch(e){
+      state.scanning=false; $('startBtn').disabled=false; $('stopBtn').disabled=true;
+      setStatus('error','Không mở được camera.', e?.message || 'Hãy kiểm tra quyền camera và thử lại.');
+    }
+  }
+  async function stopScanner(){
+    try{ if(state.controls?.stop) state.controls.stop(); }catch(e){}
+    state.controls=null;
+    try{ if(state.reader?.reset) state.reader.reset(); }catch(e){}
+    state.reader=null;
+    try{ if(video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; } }catch(e){}
+    state.scanning=false;
+    $('startBtn').disabled=false; $('stopBtn').disabled=true;
+  }
+
+  function handleScan(raw, source){
+    const mssv=normalizeMssv(raw); if(!mssv) return;
+    // Avoid repeated decoder callbacks for the same physical barcode for a short window.
+    const now=Date.now();
+    if(mssv===state.lastDecoded && now-state.lastDecodedAt<900) return;
+    state.lastDecoded=mssv; state.lastDecodedAt=now;
+    const batch=currentBatch(); if(!batch) return;
+    batch.scanCount=(batch.scanCount||0)+1;
+    const exists=batch.attendance.some(x=>x.mssv===mssv);
+    if(exists){
+      batch.duplicateCount=(batch.duplicateCount||0)+1; saveData(); render(); setStatus('warn','Đã điểm danh trước đó.',mssv); beep(false); return;
+    }
+    batch.attendance.push({mssv,time:nowIso(),source:source||'camera'});
+    saveData(); render(); setStatus('success','✓ Điểm danh thành công.', 'MSSV: '+mssv); beep(true);
+  }
+  function beep(ok){
+    try{
+      const ctx=new (window.AudioContext||window.webkitAudioContext)(); const osc=ctx.createOscillator(); const gain=ctx.createGain();
+      osc.type='sine'; osc.frequency.value=ok?880:220; gain.gain.setValueAtTime(.0001,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.15,ctx.currentTime+.01); gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.12);
+      osc.connect(gain).connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime+.13);
+    }catch(e){}
+    if(navigator.vibrate) navigator.vibrate(ok?[50]:[100,70,100]);
+  }
+
+  $('startBtn').onclick=startScanner;
+  $('stopBtn').onclick=async()=>{ await stopScanner(); setStatus('', 'Đã dừng camera.'); };
+  cameraSelect.onchange=async()=>{ if(state.scanning) await startScanner(); };
+
+  $('manualBtn').onclick=()=>{ $('manualMssv').value=''; $('manualDialog').showModal(); setTimeout(()=>$('manualMssv').focus(),50); };
+  $('cancelManual').onclick=()=>$('manualDialog').close();
+  $('saveManual').onclick=()=>{ const v=$('manualMssv').value.trim(); if(!v){alert('Vui lòng nhập MSSV.');return;} handleScan(v,'manual'); $('manualDialog').close(); };
+  $('manualMssv').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveManual').click();});
+
+  function rowsForExport(){
+    const b=currentBatch();
+    return (b?.attendance||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,Thời_gian:fmtTime(r.time),Trạng_thái:'Có mặt'}));
+  }
+  function safeFile(s){ return s.replace(/[\\/:*?"<>|]+/g,'_').replace(/\s+/g,'_').slice(0,80) || 'diem_danh'; }
+  $('csvBtn').onclick=()=>{
+    const b=currentBatch(); if(!b){alert('Chưa có đợt điểm danh.');return;}
+    const rows=rowsForExport(); const header=['STT','MSSV','Thời gian','Trạng thái'];
+    const lines=[header,...rows.map(r=>[r.STT,r.MSSV,r.Thời_gian,r.Trạng_thái])].map(a=>a.map(csvCell).join(','));
+    const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}); downloadBlob(blob,safeFile(b.name)+'_'+(b.date||'')+'.csv');
+  };
+  function csvCell(v){ const s=String(v??''); return '"'+s.replace(/"/g,'""')+'"'; }
+
+  $('excelBtn').onclick=()=>{
+    const b=currentBatch(); if(!b){alert('Chưa có đợt điểm danh.');return;}
+    if(!window.XLSX){alert('Không tải được thư viện Excel. Kiểm tra Internet rồi thử lại.');return;}
+    const ws=XLSX.utils.json_to_sheet(rowsForExport());
+    ws['!cols']=[{wch:7},{wch:18},{wch:22},{wch:14}];
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Diem danh');
+    XLSX.writeFile(wb,safeFile(b.name)+'_'+(b.date||'')+'.xlsx');
+  };
+  $('backupBtn').onclick=()=>{
+    const payload={app:'Diem danh Barcode - MSSV',version:1,exportedAt:nowIso(),data:state.data};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); downloadBlob(blob,'backup_diem_danh_'+new Date().toISOString().slice(0,10)+'.json');
+  };
+  $('restoreBtn').onclick=()=>$('restoreFile').click();
+  $('restoreFile').onchange=async e=>{
+    const file=e.target.files?.[0]; if(!file)return;
+    try{
+      const obj=JSON.parse(await file.text()); const d=obj.data||obj;
+      if(!Array.isArray(d.batches))throw new Error('File không đúng định dạng.');
+      if(!confirm('Khôi phục dữ liệu sẽ thay thế dữ liệu hiện tại trên thiết bị. Tiếp tục?')) return;
+      state.data={version:1,batches:d.batches,activeBatchId:d.activeBatchId||d.batches[0]?.id||null}; saveData(); render(); setStatus('success','Khôi phục thành công.','');
+    }catch(err){alert('Không thể khôi phục: '+err.message);} finally{e.target.value='';}
+  };
+  $('deleteBatchBtn').onclick=()=>{
+    const b=currentBatch(); if(!b)return; if(!confirm('Xóa đợt “'+b.name+'” và toàn bộ lượt điểm danh trong đợt?'))return;
+    state.data.batches=state.data.batches.filter(x=>x.id!==b.id); state.data.activeBatchId=state.data.batches[0]?.id||null; saveData(); stopScanner(); render(); setStatus('','Đã xóa đợt điểm danh.');
+  };
+  $('clearBtn').onclick=()=>{
+    const b=currentBatch(); if(!b)return; if(!confirm('Xóa toàn bộ danh sách điểm danh của đợt hiện tại?'))return;
+    b.attendance=[]; b.scanCount=0; b.duplicateCount=0; saveData(); render(); setStatus('warn','Đã xóa toàn bộ lượt điểm danh.');
+  };
+  function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); }
+
+  $('secureHint').textContent=(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')?'✓ Sẵn sàng cho camera':'⚠ Cần HTTPS để dùng camera';
+  window.addEventListener('beforeunload',()=>stopScanner());
+  window.addEventListener('pagehide',()=>stopScanner());
+  window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ /* dialogs handle */ } });
+  listCameras();
+  render();
+})();
+</script>
+</body>
+</html>
