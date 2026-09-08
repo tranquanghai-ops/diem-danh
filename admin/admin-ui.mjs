@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=3.7';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=3.7.1';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 const $=id=>document.getElementById(id),cloud=new FirebaseAttendance({scannerUrl:'../',change:render});window.attendanceCloud=cloud;
@@ -14,8 +14,8 @@ function renderCalendar(){
   const cells=[];for(let i=0;i<first;i++)cells.push('<span></span>');for(let d=1;d<=last;d++){const day=isoDay(y,m,d),selected=day===cloud.day,marked=cloud.eventDays?.has(day);cells.push(`<button type="button" class="calendar-day${selected?' selected':''}" data-calendar-day="${day}"><span>${d}</span>${marked?'<i title="Có sự kiện"></i>':''}</button>`);}$('calendarDays').innerHTML=cells.join('');
 }
 function render(){
-  const manager=cloud.manager();$('adminStatus').className='status'+(cloud.message.includes('không')||cloud.message.includes('Chưa')?' error':'');$('adminStatus').textContent=cloud.message;
-  $('loginBtn').hidden=manager;$('manager').hidden=!manager;$('ownerAdminPanel').hidden=!cloud.owner;if(!manager)return;
+  const manager=cloud.manager(),googleSignedIn=!!cloud.auth?.currentUser?.providerData?.some(p=>p.providerId==='google.com');$('adminStatus').className='status'+(cloud.message.includes('không')||cloud.message.includes('Chưa')?' error':'');$('adminStatus').textContent=cloud.message;
+  $('loginBtn').hidden=manager;$('logoutBtn').hidden=!googleSignedIn;$('manager').hidden=!manager;$('ownerAdminPanel').hidden=!cloud.owner;if(!manager)return;
   $('roleLabel').textContent=cloud.owner?'Chủ sở hữu':'Admin';$('day').value=cloud.day;renderCalendar();
   const options=['<option value="">'+(cloud.events.length?'Chọn sự kiện':'Chưa có sự kiện')+'</option>',...cloud.events.map(e=>`<option value="${esc(e.id)}">${esc(e.eventName)}</option>`)].join('');if($('eventSelect').innerHTML!==options)$('eventSelect').innerHTML=options;$('eventSelect').value=cloud.eventId||'';
   if(!editingDetails){$('eventName').value=cloud.eventName||'';$('members').value=(cloud.members||[]).map(m=>m.name).join('\n');}
@@ -25,7 +25,8 @@ function render(){
   const photos=cloud.photos||[];$('photoCount').textContent=photos.length+' ảnh';$('photoEmpty').hidden=!!photos.length;$('photoRows').innerHTML=[...photos].reverse().map((p,i)=>`<tr><td>${photos.length-i}</td><td>${p.mssv?`<b>${esc(p.mssv)}</b><br>`:''}<button class="photo-link" data-view-photo="${esc(p.id)}">Xem hình</button></td><td>${esc(p.memberName||'Không rõ')}</td><td>${esc(time(p.takenAt))}</td><td><input class="inline-input" data-photo-input="${esc(p.id)}" maxlength="12" placeholder="Nhập MSSV" value="${esc(p.mssv||'')}"></td><td><button class="primary" data-photo-save="${esc(p.id)}">Lưu MSSV</button> <button class="danger" data-photo-delete="${esc(p.id)}">Xóa</button></td></tr>`).join('');
 }
 function action(fn){return async()=>{try{await fn();editingDetails=false;render();}catch(e){cloud.error(e);$('adminStatus').className='status error';$('adminStatus').textContent=cloud.message;}};}
-$('loginBtn').onclick=action(()=>cloud.login());$('day').onchange=()=>{editingDetails=false;calendarMonth=new Date($('day').value+'T00:00:00');cloud.setDay($('day').value);};
+$('loginBtn').onclick=action(()=>cloud.login());$('logoutBtn').onclick=action(()=>cloud.logout());$('day').onchange=()=>{editingDetails=false;calendarMonth=new Date($('day').value+'T00:00:00');cloud.setDay($('day').value);};
+$('toggleCalendarBtn').onclick=()=>{const calendar=$('eventCalendar'),opening=calendar.hidden;calendar.hidden=!opening;$('toggleCalendarBtn').textContent=opening?'Ẩn lịch':'📅 Lịch trong ngày';if(opening)renderCalendar();};
 $('prevMonth').onclick=()=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()-1,1);renderCalendar();};$('nextMonth').onclick=()=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+1,1);renderCalendar();};$('calendarDays').onclick=e=>{const b=e.target.closest('[data-calendar-day]');if(!b)return;$('day').value=b.dataset.calendarDay;editingDetails=false;cloud.setDay(b.dataset.calendarDay);};
 $('eventSelect').onchange=action(async()=>{editingDetails=false;if($('eventSelect').value)await cloud.selectEvent($('eventSelect').value);});$('eventName').oninput=$('members').oninput=()=>{editingDetails=true;};$('newEventBtn').onclick=()=>{$('newEventName').value='';$('newMembers').value='';$('newEventDialog').showModal();};$('cancelNewEvent').onclick=()=>$('newEventDialog').close();$('createEventBtn').onclick=action(async()=>{await cloud.createEvent($('newEventName').value,$('newMembers').value);$('newEventDialog').close();});
 $('saveEventBtn').onclick=action(()=>cloud.saveEventDetails($('eventName').value,$('members').value));$('activateBtn').onclick=action(()=>cloud.publishDefault());$('copyLinkBtn').onclick=action(async()=>{await navigator.clipboard.writeText(cloud.shareLink());cloud.message='Đã sao chép link riêng của sự kiện.';});$('deleteEventBtn').onclick=async()=>{if(confirm('Xóa sự kiện này cùng toàn bộ dữ liệu? Thao tác không thể hoàn tác.'))await action(()=>cloud.deleteCurrentEvent())();};
