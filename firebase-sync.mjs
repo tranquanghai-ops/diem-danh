@@ -135,7 +135,9 @@ export class FirebaseAttendance {
     if(!this.manager())throw new Error('Chỉ chủ sở hữu hoặc admin có thể tạo sự kiện.');name=cleanName(name);const list=uniqueMembers(members);if(!name||name.length>100)throw new Error('Tên sự kiện phải từ 1–100 ký tự.');if(list.length>200)throw new Error('Mỗi sự kiện tối đa 200 quản lý phụ.');
     const a=this.api,eventId=await this.newShortEventId(),eventRef=a.doc(this.db,'rooms',this.room,'days',this.day,'events',eventId),batch=a.writeBatch(this.db);batch.set(eventRef,{eventName:name,day:this.day,createdByUid:this.auth.currentUser.uid,createdByEmail:(this.auth.currentUser.email||'').toLowerCase(),createdByName:cleanName(this.adminName||this.auth.currentUser.displayName)||this.auth.currentUser.email||'Không rõ',createdAt:a.serverTimestamp(),updatedAt:a.serverTimestamp()});
     for(const member of list){const normal=normalName(member),hash=await sha256(normal);batch.set(a.doc(eventRef,'members',hash),{name:member,normalized:normal,createdAt:a.serverTimestamp()});}
-    batch.set(a.doc(this.db,'publicEvents',eventId),{room:this.room,day:this.day,eventId,updatedAt:a.serverTimestamp()});await batch.commit();await this.loadEvent(this.day,eventId);return eventId;
+    batch.set(a.doc(this.db,'publicEvents',eventId),{room:this.room,day:this.day,eventId,updatedAt:a.serverTimestamp()});
+    try{await batch.commit();}catch(e){if(e?.code==='permission-denied')throw new Error('Firestore từ chối tạo sự kiện. Hãy Publish file firestore.rules V1.2.1 mới trong Firebase Console.');throw e;}
+    await this.loadEvent(this.day,eventId);return eventId;
   }
   async saveEventDetails(name,members){
     if(!this.manager()||!this.eventId)throw new Error('Chọn sự kiện trước.');name=cleanName(name);const list=uniqueMembers(members);if(!name||name.length>100||list.length>200)throw new Error('Kiểm tra tên sự kiện và danh sách quản lý phụ (tối đa 200 người).');
