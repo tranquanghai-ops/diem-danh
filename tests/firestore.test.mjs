@@ -114,8 +114,18 @@ test('event photo is visible only to its uploader and owner',async()=>{
  await assertSucceeds(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'unread')));
  await assertFails(getDocs(collection(b,'rooms',room,'days',day,'events',eventId,'unread')));
  await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',eventId,'unread')));
+ await assertSucceeds(updateDoc(photo(a),{mssv:'12300325'}));
+ await assertFails(updateDoc(photo(b),{mssv:'12300326'}));
+ await assertFails(updateDoc(photo(a),{mssv:'SAI'}));
+ await assertFails(updateDoc(photo(a),{imageData:'data:image/jpeg;base64,'+'B'.repeat(120)}));
+ await assertSucceeds(updateDoc(photo(owner),{mssv:'12300326'}));
+ const idB='44444444-4444-4444-8444-444444444444',photoB=db=>doc(db,'rooms',room,'days',day,'events',eventId,'unread',idB);
+ await assertSucceeds(setDoc(photoB(b),{imageData,takenAt:'2026-09-07T10:06:00Z',memberName:'Người quét thường',memberHash:'f'.repeat(64),eventId,eventName:'Ca sáng',uid:'scannerB',createdAt:serverTimestamp()}));
+ const ownQuery=query(collection(b,'rooms',room,'days',day,'events',eventId,'unread'),where('uid','==','scannerB'));
+ assert.equal((await assertSucceeds(getDocs(ownQuery))).size,1);
  await assertFails(deleteDoc(photo(a)));
  await assertSucceeds(deleteDoc(photo(owner)));
+ await assertSucceeds(deleteDoc(photoB(owner)));
 });
 test('scanner can upload and view their own photo; only owner can list or delete it',async()=>{
  const id='12345678-1234-1234-1234-123456789abc';

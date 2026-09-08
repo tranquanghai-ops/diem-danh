@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from './firebase-sync.mjs?v=3.1';
+import {FirebaseAttendance} from './firebase-sync.mjs?v=3.2';
 import {DEFAULT_FIREBASE_CONFIG} from './firebase-config.mjs';
 const $=id=>document.getElementById(id),ui=window.attendanceUI;
 const cloud=new FirebaseAttendance({change:render,notice:(kind,mssv)=>{

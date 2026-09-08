@@ -255,9 +255,15 @@ service cloud.firestore {
             && request.resource.data.createdAt == request.time;
           allow get: if accessible()
             && (eventManager() || resource.data.uid == request.auth.uid);
-          allow list: if accessible() && eventManager();
+          allow list: if accessible()
+            && (eventManager() || resource.data.uid == request.auth.uid);
           allow delete: if accessible() && owner(room);
-          allow update: if false;
+          allow update: if accessible()
+            && (eventManager() || resource.data.uid == request.auth.uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mssv'])
+            && request.resource.data.mssv is string
+            && request.resource.data.mssv.matches('^[A-Za-z0-9]{8,12}$')
+            && request.resource.data.mssv.matches('.*[0-9].*');
         }
       }
     }

@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=3.1';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=3.2';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 const $=id=>document.getElementById(id),cloud=new FirebaseAttendance({scannerUrl:'../',change:render});window.attendanceCloud=cloud;
@@ -19,7 +19,7 @@ function render(){
   const rows=cloud.rows||[];$('savedCount').textContent=rows.length+' lượt';$('empty').hidden=!!rows.length;
   $('rows').innerHTML=[...rows].reverse().map((r,i)=>`<tr><td>${rows.length-i}</td><td><b>${esc(r.mssv)}</b></td><td>${esc(r.memberName||'Không rõ')}</td><td>${esc(r.eventName||cloud.eventName)}</td><td>${esc(time(r.time))}</td><td><button class="danger" data-delete-scan="${esc(r.mssv)}">Xóa</button></td></tr>`).join('');
   const photos=cloud.photos||[];$('photoCount').textContent=photos.length+' ảnh';$('photoEmpty').hidden=!!photos.length;
-  $('photoRows').innerHTML=[...photos].reverse().map((p,i)=>`<tr><td>${photos.length-i}</td><td><button class="photo-link" data-view-photo="${esc(p.id)}">Hình chụp</button></td><td>${esc(p.memberName||'Không rõ')}</td><td>${esc(time(p.takenAt))}</td><td><input class="inline-input" data-photo-input="${esc(p.id)}" maxlength="12" placeholder="Nhập MSSV"></td><td><button class="primary" data-photo-save="${esc(p.id)}">Lưu</button> <button class="danger" data-photo-delete="${esc(p.id)}">Xóa</button></td></tr>`).join('');
+  $('photoRows').innerHTML=[...photos].reverse().map((p,i)=>`<tr><td>${photos.length-i}</td><td>${p.mssv?`<b>${esc(p.mssv)}</b><br>`:''}<button class="photo-link" data-view-photo="${esc(p.id)}">Xem hình</button></td><td>${esc(p.memberName||'Không rõ')}</td><td>${esc(time(p.takenAt))}</td><td><input class="inline-input" data-photo-input="${esc(p.id)}" maxlength="12" placeholder="Nhập MSSV" value="${esc(p.mssv||'')}"></td><td><button class="primary" data-photo-save="${esc(p.id)}">Lưu MSSV</button> <button class="danger" data-photo-delete="${esc(p.id)}">Xóa</button></td></tr>`).join('');
 }
 function action(fn){return async()=>{try{await fn();editingDetails=false;render();}catch(e){cloud.error(e);$('adminStatus').className='status error';$('adminStatus').textContent=cloud.message;}};}
 
@@ -44,7 +44,11 @@ function viewImage(src){viewerScale=1;$('viewerImage').src=src;applyZoom();$('im
 function applyZoom(){viewerScale=Math.max(.5,Math.min(4,viewerScale));$('viewerImage').style.width=(viewerScale*100)+'%';$('zoomReset').textContent=Math.round(viewerScale*100)+'%';}
 $('closeImageViewer').onclick=()=>$('imageViewerDialog').close();$('zoomIn').onclick=()=>{viewerScale+=.25;applyZoom();};$('zoomOut').onclick=()=>{viewerScale-=.25;applyZoom();};$('zoomReset').onclick=()=>{viewerScale=1;applyZoom();};
 
-function exportRows(){return (cloud.rows||[]).map((r,i)=>({STT:i+1,MSSV:r.mssv,'Thành viên':r.memberName||'Không rõ','Sự kiện':r.eventName||cloud.eventName,'Thời gian':time(r.time)}));}
+function exportRows(){
+  const byMssv=new Map((cloud.rows||[]).map(r=>[r.mssv,{...r,hasPhoto:false}]));
+  for(const p of cloud.photos||[])if(p.mssv&&!byMssv.has(p.mssv))byMssv.set(p.mssv,{...p,time:p.takenAt,hasPhoto:true});
+  return [...byMssv.values()].sort((a,b)=>a.mssv.localeCompare(b.mssv,undefined,{numeric:true})).map((r,i)=>({STT:i+1,MSSV:r.mssv,'Thành viên':r.memberName||'Không rõ','Sự kiện':r.eventName||cloud.eventName,'Thời gian':time(r.time),'Đối chiếu':r.hasPhoto?'Có hình':''}));
+}
 function filename(ext){return safe(cloud.eventName)+'_'+cloud.day+'.'+ext;}
 $('excelBtn').onclick=()=>{const ws=XLSX.utils.json_to_sheet(exportRows()),wb=XLSX.utils.book_new();ws['!cols']=[{wch:7},{wch:18},{wch:30},{wch:35},{wch:22}];XLSX.utils.book_append_sheet(wb,ws,'Diem danh');XLSX.writeFile(wb,filename('xlsx'));};
 $('csvBtn').onclick=()=>{const blob=new Blob(['\ufeff'+XLSX.utils.sheet_to_csv(XLSX.utils.json_to_sheet(exportRows()))],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename('csv');a.click();URL.revokeObjectURL(a.href);};

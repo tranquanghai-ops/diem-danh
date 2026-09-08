@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V3.1</title>
+  <title>Điểm danh Barcode - MSSV V3.2</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -23,7 +23,7 @@
     .card h2{font-size:17px;margin:0 0 12px}.card h3{font-size:14px;margin:16px 0 8px}
     .scanner-wrap{position:relative;overflow:hidden;border-radius:16px;background:#0b1220;aspect-ratio:16/11}
     video{width:100%;height:100%;object-fit:cover;display:block}
-    .scan-frame{position:absolute;left:12%;right:12%;top:27%;height:26%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.16)}
+    .scan-frame{position:absolute;left:4%;right:4%;top:27%;height:26%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.16)}
     .scan-tip{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;font-size:12px;text-shadow:0 1px 3px #000}
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}
     .buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -106,7 +106,7 @@
       <button class="primary" id="startBtn">▶ Bắt đầu quét</button>
       <button class="secondary" id="stopBtn" disabled>■ Dừng</button>
       <button class="secondary" id="manualBtn">Nhập MSSV</button>
-      <button class="warn photo" id="photoBtn">📷 Chụp thẻ để GV nhập sau</button>
+      <button class="warn photo" id="photoBtn">📷 Chụp vùng mã để nhập sau</button>
     </div>
     <div class="stats">
       <div class="stat"><b id="countAttendance">0</b><span class="muted">Có mặt</span></div>
@@ -136,7 +136,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V3.1</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V3.2</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -152,15 +152,20 @@
     <div class="row between"><h2>Xem hình chụp</h2><button class="secondary" id="closeImageViewer">Đóng</button></div>
     <div class="image-stage"><img id="viewerImage" alt="Hình thẻ đã chụp"></div>
     <div class="buttons"><button class="secondary" id="zoomOut">− Thu nhỏ</button><button class="secondary" id="zoomReset">100%</button><button class="secondary" id="zoomIn">＋ Phóng to</button></div>
+    <div id="photoMssvEditor" hidden style="margin-top:14px">
+      <label for="photoMssv">MSSV trên hình</label>
+      <div class="row"><input id="photoMssv" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="Nhập MSSV" style="flex:1"><button class="primary" id="savePhotoMssv">Lưu MSSV</button></div>
+      <p class="note">Chỉ tài khoản đã chụp hình này mới sửa được MSSV. Hình vẫn được giữ để xem lại.</p>
+    </div>
   </div>
 </dialog>
 
 <dialog id="photoDialog">
   <div class="modal">
-    <h2>Kiểm tra ảnh trước khi gửi</h2>
+    <h2>Kiểm tra ảnh trước khi lưu</h2>
     <img id="photoPreview" class="photo-preview" alt="Ảnh thẻ vừa chụp">
     <p class="note">Phóng to để kiểm tra MSSV có rõ hay không. Nếu ảnh mờ, chọn “Chụp lại”.</p>
-    <div class="modal-actions"><button class="secondary" id="retakePhoto">Chụp lại</button><button class="primary" id="sendPhoto">Gửi cho GV</button></div>
+    <div class="modal-actions"><button class="secondary" id="retakePhoto">Chụp lại</button><button class="primary" id="sendPhoto">Lưu</button></div>
   </div>
 </dialog>
 
@@ -236,6 +241,12 @@
     return String(value ?? '').trim().toUpperCase();
   }
   function validStudentId(value){return /^(?=.{8,12}$)(?=.*\d)[A-Z0-9]+$/.test(value);}
+  const scanFormatNames=['CODE_128','CODE_39','CODE_93','CODABAR','ITF'];
+  function scanFormats(){return scanFormatNames.map(name=>ZXingBrowser.BarcodeFormat?.[name]).filter(Number.isInteger);}
+  function createBarcodeReader(){
+    const formats=scanFormats(),hints=window.ZXingBrowser?.DecodeHintType?new Map([[ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,formats],[ZXingBrowser.DecodeHintType.TRY_HARDER,true]]):undefined;
+    const reader=new ZXingBrowser.BrowserMultiFormatReader(hints);reader.possibleFormats=formats;return reader;
+  }
 
   function setStatus(type, title, detail){
     statusBox.className = 'status' + (type ? ' ' + type : '');
@@ -248,14 +259,14 @@
     const rows = batch?.attendance || [];
     const eventName=window.attendanceCloud?.eventName||'';
     $('attendanceTitle').textContent=eventName?'Danh sách điểm danh – '+eventName:'Danh sách điểm danh';
-    $('countAttendance').textContent = rows.filter(r=>r.kind!=='photo').length;
+    $('countAttendance').textContent = rows.filter(r=>r.kind!=='photo'||validStudentId(r.mssv)).length;
     $('countScans').textContent = batch?.scanCount || 0;
     $('countDuplicates').textContent = batch?.duplicateCount || 0;
     const body = $('attendanceBody'); body.innerHTML='';
     $('emptyTable').style.display = rows.length ? 'none' : 'block';
     [...rows].reverse().forEach((r,i)=>{
       const tr = document.createElement('tr');
-      const code=r.kind==='photo'?'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Hình chụp</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
+      const code=r.kind==='photo'?(validStudentId(r.mssv)?'<b>'+escapeHtml(r.mssv)+'</b><br>':'')+'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Xem hình</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
       const canManage=window.attendanceCloud?.owner||window.attendanceCloud?.delegated;
       const remove=r.kind==='scan'&&canManage?'<button class="danger" data-delete-scan="'+escapeHtml(r.mssv)+'">Xóa</button>':'—';
       tr.innerHTML = '<td>'+(rows.length-i)+'</td><td>'+code+'</td><td>'+escapeHtml(r.memberName||r.scannerName||'Không rõ')+'</td><td>'+escapeHtml(fmtTime(r.time))+'</td><td class="status-col"><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td><td>'+remove+'</td>';
@@ -263,15 +274,24 @@
     });
     $('excelBtn').hidden=!!window.attendanceCloud?.enabled&&!(window.attendanceCloud.owner||window.attendanceCloud.delegated);
   }
-  let viewerScale=1;
+  let viewerScale=1,viewedPhotoId='';
   function applyZoom(){viewerScale=Math.max(.5,Math.min(4,viewerScale));$('viewerImage').style.width=(viewerScale*100)+'%';$('zoomReset').textContent=Math.round(viewerScale*100)+'%';}
   function viewPhoto(id){
     const photo=(currentBatch()?.attendance||[]).find(r=>r.kind==='photo'&&r.id===id);if(!photo?.imageData)return;
-    viewerScale=1;$('viewerImage').src=photo.imageData;applyZoom();$('imageViewerDialog').showModal();
+    viewedPhotoId=id;viewerScale=1;$('viewerImage').src=photo.imageData;applyZoom();
+    const canEdit=photo.uid&&photo.uid===window.attendanceCloud?.auth?.currentUser?.uid;
+    $('photoMssvEditor').hidden=!canEdit;$('photoMssv').value=validStudentId(photo.mssv)?photo.mssv:'';
+    $('imageViewerDialog').showModal();
   }
   $('attendanceBody').onclick=e=>{const photo=e.target.closest('[data-view-photo]'),remove=e.target.closest('[data-delete-scan]');if(photo)viewPhoto(photo.dataset.viewPhoto);if(remove&&confirm('Xóa lượt quét MSSV '+remove.dataset.deleteScan+'?'))window.attendanceCloud.deleteAttendance(remove.dataset.deleteScan).catch(error=>setStatus('error','Không xóa được.',error.message));};
   $('closeImageViewer').onclick=()=>$('imageViewerDialog').close();
   $('zoomIn').onclick=()=>{viewerScale+=.25;applyZoom();};$('zoomOut').onclick=()=>{viewerScale-=.25;applyZoom();};$('zoomReset').onclick=()=>{viewerScale=1;applyZoom();};
+  $('savePhotoMssv').onclick=async()=>{
+    const button=$('savePhotoMssv');button.disabled=true;
+    try{await window.attendanceCloud.labelOwnPhoto(viewedPhotoId,$('photoMssv').value);$('imageViewerDialog').close();setStatus('success','✓ Đã lưu MSSV.','Hình chụp vẫn được giữ để xem lại.');void beep(true);}
+    catch(e){setStatus('error','Không lưu được MSSV.',e.message||'Vui lòng thử lại.');}
+    finally{button.disabled=false;}
+  };
   let cameraRequest = 0;
   const isRearCamera = d => /back|rear|environment|sau|arrière|rück/i.test(d.label || '') && !/front|user|trước|selfie/i.test(d.label || '');
   function releaseStream(stream){
@@ -333,13 +353,10 @@
       }
       state.stream=stream;
       video.muted=true; video.setAttribute('playsinline','');
-      state.reader=new ZXingBrowser.BrowserMultiFormatReader();
-      // Student cards use CODE 128. Restricting the decoder prevents false matches
-      // against other one-dimensional barcode formats.
-      state.reader.possibleFormats=[ZXingBrowser.BarcodeFormat.CODE_128];
+      state.reader=createBarcodeReader();
       state.scanning=true;
       const controls=await state.reader.decodeFromStream(stream, video, result=>{
-        if(request===cameraRequest && state.scanning && result && result.getBarcodeFormat()===ZXingBrowser.BarcodeFormat.CODE_128)confirmCameraValue(result.getText());
+        if(request===cameraRequest && state.scanning && result && scanFormats().includes(result.getBarcodeFormat()))confirmCameraValue(result.getText());
       });
       if(request!==cameraRequest){ controls.stop(); releaseStream(stream); return; }
       state.controls=controls;
@@ -367,9 +384,9 @@
   async function startNativeBarcodeDetector(request){
     if(!('BarcodeDetector' in window))return;
     try{
-      const supported=await BarcodeDetector.getSupportedFormats();
-      if(!supported.includes('code_128'))return;
-      state.nativeDetector=new BarcodeDetector({formats:['code_128']});
+      const supported=await BarcodeDetector.getSupportedFormats(),wanted=['code_128','code_39','code_93','codabar','itf'].filter(format=>supported.includes(format));
+      if(!wanted.length)return;
+      state.nativeDetector=new BarcodeDetector({formats:wanted});
       const detect=async()=>{
         if(request!==cameraRequest||!state.scanning||!state.nativeDetector)return;
         if(!state.nativeBusy&&video.readyState>=2){
@@ -394,17 +411,16 @@
 
   function startEnhancedBarcodeDetector(request){
     try{
-      state.enhancedReader=new ZXingBrowser.BrowserMultiFormatReader();
-      state.enhancedReader.possibleFormats=[ZXingBrowser.BarcodeFormat.CODE_128];
+      state.enhancedReader=createBarcodeReader();let variant=0;
       const detect=()=>{
         if(request!==cameraRequest||!state.scanning||!state.enhancedReader)return;
         if(!state.enhancedBusy&&video.readyState>=2){
           state.enhancedBusy=true;
           try{
             // Normalise wide printed bars into a compact, high-contrast scan strip.
-            const source=captureScanFrame(),canvas=document.createElement('canvas');
-            canvas.width=1000;canvas.height=220;
-            const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(2.1)';
+            const source=captureScanFrame(),canvas=document.createElement('canvas'),widths=[1400,1050,800];
+            canvas.width=widths[variant++%widths.length];canvas.height=220;
+            const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(2.15)';
             ctx.drawImage(source,0,0,canvas.width,canvas.height);
             const result=state.enhancedReader.decodeFromCanvas(canvas);
             if(result?.getText())confirmCameraValue(result.getText());
@@ -517,33 +533,27 @@
   $('saveManual').onclick=()=>{ void unlockAudio(); const v=$('manualMssv').value.trim(); if(!v){alert('Vui lòng nhập MSSV.');return;} handleScan(v,'manual'); $('manualDialog').close(); };
   $('manualMssv').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveManual').click();});
 
-  function captureScanFrame(){
+  function captureFrame({scaleOut=1,filter='none',maxWidth=Infinity}={}){
     if(!state.scanning||video.readyState<2)throw new Error('Hãy bắt đầu camera trước.');
     const frame=document.querySelector('.scan-frame').getBoundingClientRect(),box=video.getBoundingClientRect();
     const vw=video.videoWidth,vh=video.videoHeight,scale=Math.max(box.width/vw,box.height/vh);
     const rw=vw*scale,rh=vh*scale,offsetX=(rw-box.width)/2,offsetY=(rh-box.height)/2;
     const sx=Math.max(0,(frame.left-box.left+offsetX)/scale),sy=Math.max(0,(frame.top-box.top+offsetY)/scale);
     const sw=Math.min(vw-sx,frame.width/scale),sh=Math.min(vh-sy,frame.height/scale);
-    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(sw*2));canvas.height=Math.max(1,Math.round(sh*2));
-    const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.8)';ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+    const outputScale=Math.min(scaleOut,maxWidth/sw),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(sw*outputScale));canvas.height=Math.max(1,Math.round(sh*outputScale));
+    const ctx=canvas.getContext('2d');ctx.filter=filter;ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
     return canvas;
   }
-  function captureFullCard(maxWidth=1200){
-    if(!state.scanning||video.readyState<2)throw new Error('Hãy bắt đầu camera trước.');
-    const scale=Math.min(1,maxWidth/video.videoWidth),canvas=document.createElement('canvas');
-    canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
-    const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.45)';ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    return canvas;
-  }
+  function captureScanFrame(){return captureFrame({scaleOut:2,filter:'grayscale(1) contrast(1.8)'});}
   let pendingPhoto=null;
   $('photoBtn').onclick=()=>{
     if(!requireScannerName())return;
     try{
       const cloud=window.attendanceCloud;
       if(!cloud?.connected)throw new Error('Chưa kết nối danh sách chung.');
-      const canvas=captureFullCard(960);
-      let imageData=canvas.toDataURL('image/jpeg',.6);
-      if(imageData.length>450000)imageData=canvas.toDataURL('image/jpeg',.4);
+      const canvas=captureFrame({scaleOut:1,maxWidth:1400});
+      let imageData=canvas.toDataURL('image/jpeg',.76);
+      if(imageData.length>450000)imageData=canvas.toDataURL('image/jpeg',.58);
       if(imageData.length>450000)throw new Error('Ảnh vẫn quá lớn. Đưa thẻ gần hơn rồi chụp lại.');
       pendingPhoto={imageData};
       $('photoPreview').src=imageData;
@@ -557,7 +567,7 @@
     try{
       await window.attendanceCloud.uploadPhoto(pendingPhoto.imageData);
       $('photoDialog').close();pendingPhoto=null;$('photoPreview').removeAttribute('src');
-      setStatus('success','✓ Đã gửi hình chụp.','Bấm “Hình chụp” trong danh sách để xem lại.');
+      setStatus('success','✓ Đã lưu hình chụp.','Bấm “Xem hình” để kiểm tra hoặc nhập MSSV.');
       void beep(true);
     }catch(e){setStatus('error','Không gửi được ảnh.',e.message||'Vui lòng thử lại.');}
     finally{$('sendPhoto').disabled=false;$('retakePhoto').disabled=false;}
@@ -565,7 +575,7 @@
 
   function rowsForExport(){
     const b=currentBatch();
-    return (b?.attendance||[]).filter(r=>r.kind!=='photo').map((r,i)=>({STT:i+1,MSSV:r.mssv,Thành_viên:r.memberName||r.scannerName||'Không ghi nhận',Sự_kiện:r.eventName||window.attendanceCloud?.eventName||'',Thời_gian:fmtTime(r.time),Trạng_thái:r.status||'Có mặt'}));
+    return (b?.attendance||[]).filter(r=>r.kind!=='photo'||validStudentId(r.mssv)).sort((a,b)=>a.mssv.localeCompare(b.mssv,undefined,{numeric:true})).map((r,i)=>({STT:i+1,MSSV:r.mssv,Thành_viên:r.memberName||r.scannerName||'Không ghi nhận',Sự_kiện:r.eventName||window.attendanceCloud?.eventName||'',Thời_gian:fmtTime(r.time),Trạng_thái:r.kind==='photo'?'Có ảnh đối chiếu':(r.status||'Có mặt')}));
   }
   function safeFilename(value){
     return String(value||'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,80)||'diem_danh';
@@ -589,6 +599,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=3.1"></script>
+<script type="module" src="./cloud-ui.mjs?v=3.2"></script>
 </body>
 </html>

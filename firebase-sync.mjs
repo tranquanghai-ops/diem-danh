@@ -61,7 +61,7 @@ export class FirebaseAttendance {
   }
   setDay(day){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day))throw new Error('Ngày không hợp lệ.');this.day=day;this.eventId='';this.eventName='';this.rows=[];this.photos=[];this.members=[];this.scans=0;this.duplicates=0;
-    for(const key of ['unsubscribe','unsubscribePhotos','unsubscribeMembers','unsubscribeEvents']){this[key]?.();this[key]=null;}
+    for(const key of ['unsubscribe','unsubscribePhotos','unsubscribeOwnPhotos','unsubscribeMembers','unsubscribeEvents']){this[key]?.();this[key]=null;}
     if(this.connected&&this.owner)this.unsubscribeEvents=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'days',day,'events'),snap=>{if(day!==this.day)return;this.events=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));this.change();},e=>this.error(e));
     this.change();
   }
@@ -73,12 +73,17 @@ export class FirebaseAttendance {
   }
   async selectEvent(eventId){await this.loadEvent(this.day,eventId);}
   subscribeActive(){
-    for(const key of ['unsubscribe','unsubscribePhotos','unsubscribeMembers']){this[key]?.();this[key]=null;}if(!this.eventId)return;const base=['rooms',this.room,'days',this.day,'events',this.eventId];
+    for(const key of ['unsubscribe','unsubscribePhotos','unsubscribeOwnPhotos','unsubscribeMembers']){this[key]?.();this[key]=null;}if(!this.eventId)return;const base=['rooms',this.room,'days',this.day,'events',this.eventId];
     if(this.owner||this.delegated){
       this.unsubscribe=this.api.onSnapshot(this.api.collection(this.db,...base,'attendance'),{includeMetadataChanges:true},snap=>{this.rows=snap.docs.map(d=>({...d.data(),time:d.data().scannedAt,status:'Đã lưu trực tuyến'})).sort((a,b)=>a.time.localeCompare(b.time));this.serverReady=!snap.metadata.fromCache;this.message=this.serverReady?'Đã đồng bộ: '+this.eventName:'Đang tải dữ liệu';this.change();},e=>this.error(e));
       this.unsubscribePhotos=this.api.onSnapshot(this.api.collection(this.db,...base,'unread'),snap=>{this.photos=snap.docs.map(d=>({id:d.id,...d.data(),time:d.data().takenAt,kind:'photo'})).sort((a,b)=>a.time.localeCompare(b.time));this.change();},e=>this.error(e));
       if(this.owner)this.unsubscribeMembers=this.api.onSnapshot(this.api.collection(this.db,...base,'members'),snap=>{this.members=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name,'vi'));this.change();},e=>this.error(e));
-    }else this.serverReady=true;void this.flush();this.change();
+    }else{
+      const ownQuery=this.api.query(this.api.collection(this.db,...base,'unread'),this.api.where('uid','==',this.auth.currentUser.uid));
+      this.unsubscribeOwnPhotos=this.api.onSnapshot(ownQuery,snap=>{this.ownPhotos=snap.docs.map(d=>({id:d.id,...d.data(),time:d.data().takenAt,kind:'photo'})).sort((a,b)=>a.time.localeCompare(b.time));this.change();},e=>this.error(e));
+      this.serverReady=true;
+    }
+    void this.flush();this.change();
   }
   async verifyMember(name){
     if(!this.eventId)throw new Error('Chưa kết nối sự kiện.');const normalized=normalName(name);if(normalized.length<2||normalized.length>100)throw new Error('Tên thành viên không hợp lệ.');
@@ -91,7 +96,7 @@ export class FirebaseAttendance {
   visibleRows(){
     const map=new Map(this.rows.map(r=>['scan:'+r.mssv,{...r,kind:'scan',status:'Đã lưu trực tuyến'}]));
     for(const r of this.outbox?.entries()||[]){if(r.eventId===this.eventId&&!map.has('scan:'+r.mssv))map.set('scan:'+r.mssv,{...r,kind:'scan',status:'Chờ gửi'});}
-    const photos=this.delegated||this.owner?this.photos:this.ownPhotos;for(const p of photos)map.set('photo:'+p.id,{...p,kind:'photo',mssv:'Hình chụp',status:'Ảnh chờ nhập',time:p.takenAt});return [...map.values()].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    const photos=this.delegated||this.owner?this.photos:this.ownPhotos;for(const p of photos)map.set('photo:'+p.id,{...p,kind:'photo',mssv:p.mssv||'Hình chụp',status:p.mssv?'Đã nhập MSSV':'Ảnh chờ nhập',time:p.takenAt});return [...map.values()].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
   }
   requireMember(){if(!this.owner&&!this.authorized)throw new Error('Nhập tên người quét trước khi bắt đầu.');}
   async scan(mssv,source='camera'){
@@ -123,11 +128,15 @@ export class FirebaseAttendance {
   async uploadPhoto(imageData){
     if(!this.connected||!this.eventId||!navigator.onLine)throw new Error('Cần Internet và sự kiện đang hoạt động.');this.requireMember();if(typeof imageData!=='string'||!imageData.startsWith('data:image/jpeg;base64,')||imageData.length>450000)throw new Error('Ảnh quá lớn hoặc không hợp lệ.');
     const a=this.api,id=crypto.randomUUID(),takenAt=new Date().toISOString(),ref=a.doc(this.db,'rooms',this.room,'days',this.day,'events',this.eventId,'unread',id),data={imageData,takenAt,memberName:this.memberName,memberHash:this.memberHash,eventId:this.eventId,eventName:this.eventName,uid:this.auth.currentUser.uid,createdAt:a.serverTimestamp()};
-    await a.setDoc(ref,data);const saved=await a.getDocFromServer(ref);if(!saved.exists())throw new Error('Không thể mở lại ảnh đã gửi.');const result={id,...saved.data()};this.ownPhotos.push(result);this.message='Đã gửi ảnh chờ GV nhập MSSV.';this.change();return result;
+    await a.setDoc(ref,data);const saved=await a.getDocFromServer(ref);if(!saved.exists())throw new Error('Không thể mở lại ảnh đã lưu.');const result={id,...saved.data()};if(!this.unsubscribeOwnPhotos)this.ownPhotos.push(result);this.message='Đã lưu ảnh. Có thể mở lại và nhập MSSV.';this.change();return result;
+  }
+  async labelOwnPhoto(photoId,mssv){
+    if(!this.eventId||!EVENT_ID.test(photoId))throw new Error('Hình chụp không hợp lệ.');mssv=String(mssv||'').trim().toUpperCase();if(!/^(?=.{8,12}$)(?=.*\d)[A-Z0-9]+$/.test(mssv))throw new Error('MSSV phải gồm 8–12 chữ hoặc số.');
+    const a=this.api,base=['rooms',this.room,'days',this.day,'events',this.eventId],photoRef=a.doc(this.db,...base,'unread',photoId),attendance=await a.getDoc(a.doc(this.db,...base,'attendance',mssv));if(attendance.exists())throw new Error('MSSV này đã có trong danh sách điểm danh.');
+    await a.updateDoc(photoRef,{mssv});for(const list of [this.ownPhotos,this.photos]){const photo=list.find(p=>p.id===photoId);if(photo)photo.mssv=mssv;}this.message='Đã lưu MSSV và giữ hình để đối chiếu.';this.change();
   }
   async resolvePhoto(photoId,mssv){
-    if(!this.owner||!this.eventId)throw new Error('Chỉ GV có thể xử lý ảnh.');mssv=String(mssv||'').trim().toUpperCase();if(!/^(?=.{8,12}$)(?=.*\d)[A-Z0-9]+$/.test(mssv))throw new Error('MSSV phải gồm 8–12 chữ hoặc số.');const a=this.api,base=['rooms',this.room,'days',this.day,'events',this.eventId],photoRef=a.doc(this.db,...base,'unread',photoId),attendanceRef=a.doc(this.db,...base,'attendance',mssv);
-    const result=await a.runTransaction(this.db,async tx=>{const [photo,attendance]=await Promise.all([tx.get(photoRef),tx.get(attendanceRef)]);if(!photo.exists())throw new Error('Ảnh đã được xử lý.');const p=photo.data();if(!attendance.exists())tx.set(attendanceRef,{mssv,scannedAt:p.takenAt,source:'manual',memberName:p.memberName,memberHash:p.memberHash,eventId:this.eventId,eventName:this.eventName,requestId:crypto.randomUUID(),uid:this.auth.currentUser.uid,createdAt:a.serverTimestamp()});tx.delete(photoRef);return attendance.exists()?'duplicate':'saved';});this.message=result==='duplicate'?'MSSV đã có; ảnh đã xóa.':'Đã bổ sung điểm danh từ ảnh.';this.change();
+    if(!this.owner||!this.eventId)throw new Error('Chỉ GV có thể xử lý ảnh.');await this.labelOwnPhoto(photoId,mssv);this.message='Đã lưu MSSV và giữ hình để đối chiếu.';this.change();
   }
   async deletePhoto(photoId){if(!this.owner)throw new Error('Chỉ GV có thể xóa ảnh.');await this.api.deleteDoc(this.api.doc(this.db,'rooms',this.room,'days',this.day,'events',this.eventId,'unread',photoId));}
   async deleteAttendance(mssv){if(!this.owner&&!this.delegated)throw new Error('Chỉ GV hoặc quản lý phụ được xóa lượt quét.');for(const record of this.outbox?.entries()||[])if(record.mssv===mssv)this.outbox.remove(record);await this.api.deleteDoc(this.api.doc(this.db,'rooms',this.room,'days',this.day,'events',this.eventId,'attendance',mssv));this.message='Đã xóa lượt quét '+mssv+'.';this.change();}
