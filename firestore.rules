@@ -28,6 +28,28 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
       allow delete: if googleUser() && manager(resource.data.room);
     }
+    match /adminAccess/{adminEmail} {
+      // A Google user can discover only their own assigned room. Listing is denied.
+      allow get: if googleUser() && request.auth.token.email == adminEmail;
+      allow list: if false;
+      allow create: if owner(request.resource.data.room)
+        && adminEmail == request.resource.data.email
+        && request.resource.data.keys().hasAll(['email','room','name','addedByUid','addedAt'])
+        && request.resource.data.keys().hasOnly(['email','room','name','addedByUid','addedAt'])
+        && request.resource.data.room.matches('^[a-f0-9]{48}$')
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.addedByUid == request.auth.uid
+        && request.resource.data.addedAt == request.time;
+      allow update: if owner(resource.data.room) && owner(request.resource.data.room)
+        && adminEmail == request.resource.data.email
+        && request.resource.data.keys().hasAll(['email','room','name','addedByUid','addedAt'])
+        && request.resource.data.keys().hasOnly(['email','room','name','addedByUid','addedAt'])
+        && request.resource.data.room.matches('^[a-f0-9]{48}$')
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.addedByUid == request.auth.uid
+        && request.resource.data.addedAt == request.time;
+      allow delete: if owner(resource.data.room);
+    }
     match /rooms/{room} {
       // A random 192-bit invitation ID grants participation. Room enumeration is restricted.
       allow get: if signedIn() && room.matches('^[a-f0-9]{48}$');

@@ -46,9 +46,9 @@ export class FirebaseAttendance {
     if(!room&&result.user.email){
       const email=result.user.email.toLowerCase();let candidate=this.settings?.room;
       if(candidate&&/^[a-f0-9]{48}$/.test(candidate)){const assigned=await a.getDocFromServer(a.doc(this.db,'rooms',candidate,'admins',email));if(assigned.exists())room=candidate;else throw new Error('Tài khoản Google '+email+' chưa được thêm vào danh sách admin. Hãy đăng xuất và chọn đúng tài khoản.');}
-      if(!room){const assigned=await a.getDocs(a.query(a.collectionGroup(this.db,'admins'),a.where('email','==',email),a.limit(1)));room=assigned.docs[0]?.ref.parent.parent?.id;}
+      if(!room){const access=await a.getDocFromServer(a.doc(this.db,'adminAccess',email));if(access.exists())room=access.data().room;}
     }
-    if(!room){room=Array.from(crypto.getRandomValues(new Uint8Array(24)),x=>x.toString(16).padStart(2,'0')).join('');await a.setDoc(a.doc(this.db,'rooms',room),{ownerUid:result.user.uid,createdAt:a.serverTimestamp()});}
+    if(!room)throw new Error('Tài khoản Google '+(result.user.email||'này')+' chưa được cấp quyền Admin. Hãy kiểm tra đúng email hoặc nhờ chủ sở hữu mở trang quản lý để đồng bộ quyền.');
     await this.join(room);this.message='Đã đăng nhập. Hãy tạo hoặc chọn sự kiện.';this.change();
   }
   async connectDefault(config){
@@ -70,7 +70,7 @@ export class FirebaseAttendance {
   subscribeCalendar(){
     this.unsubscribeCalendar?.();const q=this.api.query(this.api.collection(this.db,'publicEvents'),this.api.where('room','==',this.room));
     this.unsubscribeCalendar=this.api.onSnapshot(q,snap=>{this.linkMappings=snap.docs.map(d=>({id:d.id,...d.data()}));const unique=new Map();for(const item of this.linkMappings)if(!unique.has(item.eventId)||item.id.length<unique.get(item.eventId).id.length)unique.set(item.eventId,item);this.eventMappings=[...unique.values()];this.eventDays=new Set(this.eventMappings.map(d=>d.day).filter(Boolean));this.change();void this.refreshEventArchive();},e=>this.error(e));
-    if(this.owner)this.unsubscribeAdmins=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'admins'),snap=>{this.admins=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.email.localeCompare(b.email));this.change();},e=>this.error(e));
+    if(this.owner)this.unsubscribeAdmins=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'admins'),snap=>{this.admins=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.email.localeCompare(b.email));this.change();void this.syncAdminAccessIndex(this.admins).catch(()=>{});},e=>this.error(e));
   }
   async refreshEventArchive(){
     if(!this.manager())return;const mappings=[...this.eventMappings],items=(await Promise.all(mappings.map(async mapping=>{try{const snap=await this.api.getDoc(this.api.doc(this.db,'rooms',this.room,'days',mapping.day,'events',mapping.eventId));return snap.exists()?{...mapping,...snap.data(),id:mapping.eventId,linkCode:mapping.id}:null;}catch{return null;}}))).filter(Boolean);
@@ -169,9 +169,10 @@ export class FirebaseAttendance {
   async clearVisible(){if(!this.manager()||!this.eventId)throw new Error('Chỉ chủ sở hữu hoặc admin có thể xóa dữ liệu.');for(let i=0;i<this.rows.length;i+=400){const batch=this.api.writeBatch(this.db);this.rows.slice(i,i+400).forEach(r=>batch.delete(this.api.doc(this.db,'rooms',this.room,'days',this.day,'events',this.eventId,'attendance',r.mssv)));await batch.commit();}}
   async addAdmin(email,name=''){
     if(!this.owner)throw new Error('Chỉ chủ sở hữu được thêm admin.');email=String(email||'').trim().toLowerCase();name=cleanName(name);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error('Email admin không hợp lệ.');
-    await this.api.setDoc(this.api.doc(this.db,'rooms',this.room,'admins',email),{email,name,addedByUid:this.auth.currentUser.uid,addedAt:this.api.serverTimestamp()});this.message='Đã thêm admin '+email+'.';this.change();
+    const a=this.api,batch=a.writeBatch(this.db),data={email,name,addedByUid:this.auth.currentUser.uid,addedAt:a.serverTimestamp()};batch.set(a.doc(this.db,'rooms',this.room,'admins',email),data);batch.set(a.doc(this.db,'adminAccess',email),{...data,room:this.room});await batch.commit();this.message='Đã thêm admin '+email+'.';this.change();
   }
-  async removeAdmin(email){if(!this.owner)throw new Error('Chỉ chủ sở hữu được xóa admin.');email=String(email||'').trim().toLowerCase();await this.api.deleteDoc(this.api.doc(this.db,'rooms',this.room,'admins',email));this.message='Đã xóa quyền admin '+email+'.';this.change();}
+  async syncAdminAccessIndex(admins=[]){if(!this.owner||!admins.length)return;const a=this.api,batch=a.writeBatch(this.db);for(const admin of admins){const email=String(admin.email||admin.id||'').toLowerCase();if(email)batch.set(a.doc(this.db,'adminAccess',email),{email,room:this.room,name:admin.name||'',addedByUid:this.auth.currentUser.uid,addedAt:a.serverTimestamp()});}await batch.commit();}
+  async removeAdmin(email){if(!this.owner)throw new Error('Chỉ chủ sở hữu được xóa admin.');email=String(email||'').trim().toLowerCase();const a=this.api,batch=a.writeBatch(this.db);batch.delete(a.doc(this.db,'rooms',this.room,'admins',email));batch.delete(a.doc(this.db,'adminAccess',email));await batch.commit();this.message='Đã xóa quyền admin '+email+'.';this.change();}
   async logout(){if(this.auth)await this.api.signOut(this.auth);this.owner=false;this.admin=false;this.adminName='';this.connected=false;this.message='Đã đăng xuất. Có thể đăng nhập bằng tài khoản Google khác.';this.change();}
   canDeleteCurrentEvent(){return !!this.eventId&&(this.owner||(this.admin&&this.currentEvent?.createdByUid===this.auth.currentUser.uid));}
   async deleteCurrentEvent(){

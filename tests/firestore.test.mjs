@@ -145,10 +145,17 @@ test('scanner can upload and view their own photo; only owner can list or delete
  await assertSucceeds(deleteDoc(photoRef(owner)));
 });
 test('owner manages admins; admin operates events but only deletes own events',async()=>{
- const email='admin@example.com',admin=env.authenticatedContext('adminUid',{email,firebase:{sign_in_provider:'google.com'}}).firestore();
+ const email='admin@example.com',admin=env.authenticatedContext('adminUid',{email,firebase:{sign_in_provider:'google.com'}}).firestore(),other=env.authenticatedContext('otherUid',{email:'other@example.com',firebase:{sign_in_provider:'google.com'}}).firestore();
  const adminRef=doc(owner,'rooms',room,'admins',email);
  await assertSucceeds(setDoc(adminRef,{email,name:'Quản trị viên',addedByUid:'teacher',addedAt:serverTimestamp()}));
- const found=await assertSucceeds(getDocs(query(collectionGroup(admin,'admins'),where('email','==',email))));assert.equal(found.size,1);
+ const accessRef=doc(owner,'adminAccess',email),accessData={email,room,name:'Quản trị viên',addedByUid:'teacher',addedAt:serverTimestamp()};
+ await assertSucceeds(setDoc(accessRef,accessData));
+ assert.equal((await assertSucceeds(getDoc(doc(admin,'adminAccess',email)))).data().room,room);
+ await assertFails(getDoc(doc(other,'adminAccess',email)));
+ await assertFails(getDocs(collection(admin,'adminAccess')));
+ // Nested admin rules intentionally do not expose a collection-group directory.
+ // Login discovers the room through the private adminAccess document instead.
+ await assertFails(getDocs(query(collectionGroup(admin,'admins'),where('email','==',email))));
  await assertFails(setDoc(doc(admin,'rooms',room,'admins','other@example.com'),{email:'other@example.com',name:'Khác',addedByUid:'adminUid',addedAt:serverTimestamp()}));
  await assertFails(deleteDoc(doc(admin,'rooms',room,'admins',email)));
  const ownEvent='5555555555',ownerEvent='66666666-6666-4666-8666-666666666666';
@@ -162,5 +169,6 @@ test('owner manages admins; admin operates events but only deletes own events',a
  await assertSucceeds(deleteDoc(ownRef));
  await assertSucceeds(deleteDoc(doc(admin,'publicEvents',ownEvent)));
  await assertSucceeds(deleteDoc(ownerRef));
+ await assertSucceeds(deleteDoc(accessRef));
  await assertSucceeds(deleteDoc(adminRef));
 });
