@@ -56,7 +56,7 @@ tranquanghai-ops.github.io
 - Mỗi sự kiện có tên, ngày, danh sách thành viên, liên kết và dữ liệu điểm danh riêng. Có thể tạo nhiều sự kiện trong cùng ngày.
 - Mọi người có đúng liên kết sự kiện đều được quét sau khi nhập tên người quét. Danh sách tên do GV nhập chỉ dùng để cấp quyền **SV quản lý phụ**: xem/tải toàn bộ dữ liệu sự kiện và xóa từng lượt sai. Chỉ GV được sửa sự kiện, sửa danh sách quyền hoặc dùng chức năng xóa toàn bộ.
 - Liên kết chính chỉ trỏ đến một sự kiện tại một thời điểm. Với nhiều sự kiện đồng thời, gửi liên kết riêng của từng sự kiện.
-- Danh sách trên màn hình hiển thị mới nhất ở trên; Excel/CSV xuất theo thứ tự thời gian từ cũ đến mới.
+- Danh sách trên màn hình hiển thị mới nhất ở trên; Excel/CSV sắp xếp MSSV từ nhỏ đến lớn và dùng thứ tự cột: STT, MSSV, Sự kiện, Thành viên quét, Thời gian.
 - Ảnh chụp không quét được lấy toàn bộ vùng camera đang hiển thị để thấy cả MSSV và mã vạch. Người chụp có thể mở lại, phóng to và nhập MSSV; người quản lý vẫn có thể xem, hiệu chỉnh hoặc xóa từng ảnh.
 - **Đã nhận mã — chờ gửi**: mã đã được lưu vào hàng đợi của điện thoại, chưa được máy chủ xác nhận.
 - **Đã lưu trực tuyến**: máy chủ đã xác nhận. Có thể đổi người hoặc máy mà không mất bản ghi này.
