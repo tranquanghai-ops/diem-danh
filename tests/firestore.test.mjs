@@ -126,6 +126,9 @@ test('event photo is visible only to its uploader and owner',async()=>{
  await assertFails(deleteDoc(photo(a)));
  await assertSucceeds(deleteDoc(photo(owner)));
  await assertSucceeds(deleteDoc(photoB(owner)));
+ const accessRef=doc(a,'rooms',room,'days',day,'events',eventId,'access','scannerA');
+ await assertFails(deleteDoc(doc(b,'rooms',room,'days',day,'events',eventId,'access','scannerA')));
+ await assertSucceeds(deleteDoc(accessRef));
 });
 test('scanner can upload and view their own photo; only owner can list or delete it',async()=>{
  const id='12345678-1234-1234-1234-123456789abc';

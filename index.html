@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V3.2</title>
+  <title>Điểm danh Barcode - MSSV V3.3</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -87,7 +87,7 @@
   <section class="card scanner-name">
     <div id="eventInfo" class="note">Đang tải sự kiện…</div>
     <label for="scannerName">Tên người quét</label>
-    <div class="row"><input id="scannerName" maxlength="100" autocomplete="name" placeholder="Nhập họ tên người đang dùng máy" style="flex:1"><button class="primary" id="verifyMemberBtn">Tiếp tục</button></div>
+    <div class="row"><input id="scannerName" maxlength="100" autocomplete="off" placeholder="Nhập họ tên người đang dùng máy" style="flex:1"><button class="primary" id="verifyMemberBtn">Tiếp tục</button><button class="secondary" id="changeMemberBtn" hidden>Đổi tên</button></div>
     <p id="memberHint" class="note">Có link sự kiện là được quét. Tên khớp danh sách của GV sẽ nhận thêm quyền quản lý phụ.</p>
   </section>
 
@@ -136,7 +136,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V3.2</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V3.3</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -176,7 +176,6 @@
   'use strict';
 
   const STORAGE_KEY = 'barcodeAttendanceApp_v1';
-  const SCANNER_NAME_KEY = 'attendance_scanner_name_v1';
   const state = {
     data: loadData(),
     reader: null,
@@ -198,17 +197,16 @@
   const statusBox = $('status');
   const cameraSelect = $('cameraSelect');
   const scannerNameInput = $('scannerName');
-  scannerNameInput.value = localStorage.getItem(SCANNER_NAME_KEY) || '';
+  scannerNameInput.value = '';
 
   function scannerName(){ return scannerNameInput.value.trim(); }
   function requireScannerName(){
     const name=scannerName();
     const cloud=window.attendanceCloud;
     if(name&&(!cloud?.enabled||cloud.authorized)) return name;
-    setStatus('error','Chưa được phép quét.','Nhập đúng họ tên đã được GV thêm rồi nhấn “Xác nhận”.');
+    setStatus('error','Chưa xác nhận người quét.','Nhập họ tên người đang dùng máy rồi nhấn “Tiếp tục”.');
     scannerNameInput.focus();return '';
   }
-  scannerNameInput.addEventListener('input',()=>localStorage.setItem(SCANNER_NAME_KEY,scannerNameInput.value.trim()));
 
   function normalizeData(d){
     if(!d || typeof d !== 'object') throw new Error('File không đúng định dạng.');
@@ -599,6 +597,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=3.2"></script>
+<script type="module" src="./cloud-ui.mjs?v=3.3"></script>
 </body>
 </html>

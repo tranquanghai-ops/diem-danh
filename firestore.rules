@@ -197,7 +197,8 @@ service cloud.firestore {
               && request.resource.data.grantedAt == request.time;
           }
           allow get: if validEvent() && (uid == request.auth.uid || owner(room));
-          allow list, delete: if owner(room);
+          allow list: if owner(room);
+          allow delete: if validEvent() && (uid == request.auth.uid || owner(room));
           allow create, update: if validAccess();
         }
 

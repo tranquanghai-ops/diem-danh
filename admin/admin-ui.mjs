@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=3.2';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=3.3';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 const $=id=>document.getElementById(id),cloud=new FirebaseAttendance({scannerUrl:'../',change:render});window.attendanceCloud=cloud;
