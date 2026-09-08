@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f172a">
-  <title>Quản lý điểm danh V3.0</title>
+  <title>Quản lý điểm danh V3.1</title>
   <style>
     :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#2563eb;--success:#16a34a;--danger:#dc2626}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.app{max-width:1050px;margin:auto;padding:18px}
@@ -17,7 +17,7 @@
 </head>
 <body>
 <main class="app">
-  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V3.0 • Built by Trần Quang Hải</span></div><a class="button" href="../">Mở máy quét</a></header>
+  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V3.1 • Built by Trần Quang Hải</span></div><a class="button" href="../">Mở máy quét</a></header>
   <section class="card"><div id="adminStatus" class="status">Đang kiểm tra đăng nhập…</div><div class="buttons"><button id="loginBtn" class="primary">Đăng nhập Google</button></div></section>
 
   <div id="manager" hidden>
@@ -25,10 +25,10 @@
       <div class="between"><h2>Sự kiện và thành viên</h2><button id="newEventBtn" class="primary">＋ Tạo sự kiện</button></div>
       <div class="row"><div style="flex:0 1 190px"><label for="day">Ngày</label><input id="day" type="date"></div><div style="flex:1;min-width:220px"><label for="eventSelect">Sự kiện trong ngày</label><select id="eventSelect"><option value="">Chưa có sự kiện</option></select></div></div>
       <label for="eventName">Tên sự kiện đang chọn</label><input id="eventName" maxlength="100" placeholder="Ví dụ: Điểm danh Đồ án Nội thất – ca sáng">
-      <label for="members">Danh sách thành viên — mỗi dòng một họ tên</label><textarea id="members" placeholder="Lê Phạm Quỳnh Anh&#10;Nguyễn Văn Bình"></textarea>
+      <label for="members">Danh sách SV được cấp quyền quản lý phụ — mỗi dòng một họ tên</label><textarea id="members" placeholder="Lê Phạm Quỳnh Anh&#10;Nguyễn Văn Bình"></textarea>
       <div class="buttons"><button id="saveEventBtn" class="primary">Lưu thay đổi</button><button id="activateBtn" class="success">Dùng tại link chính</button><button id="copyLinkBtn">Sao chép link sự kiện</button></div>
       <label for="shareLink">Liên kết dành cho thành viên</label><input id="shareLink" readonly>
-      <p class="note">Mỗi sự kiện có link và danh sách tên riêng. Thành viên phải nhập đúng tên đã thêm mới mở được camera.</p>
+      <p class="note">Mọi người có link đều có thể quét sau khi nhập tên. SV có tên khớp danh sách này được xem và tải toàn bộ dữ liệu, đồng thời xóa từng lượt sai. Chỉ GV được sửa sự kiện, sửa danh sách quyền hoặc xóa toàn bộ. Có thể để trống danh sách.</p>
     </section>
 
     <section class="card">
@@ -44,9 +44,9 @@
   </div>
 </main>
 
-<dialog id="newEventDialog"><div class="modal"><h2>Tạo sự kiện mới</h2><label for="newEventName">Tên sự kiện</label><input id="newEventName" maxlength="100"><label for="newMembers">Danh sách thành viên — mỗi dòng một tên</label><textarea id="newMembers"></textarea><div class="modal-actions"><button id="cancelNewEvent">Hủy</button><button id="createEventBtn" class="primary">Tạo và kích hoạt</button></div></div></dialog>
+<dialog id="newEventDialog"><div class="modal"><h2>Tạo sự kiện mới</h2><label for="newEventName">Tên sự kiện</label><input id="newEventName" maxlength="100"><label for="newMembers">Danh sách SV được cấp quyền quản lý phụ — mỗi dòng một tên</label><textarea id="newMembers"></textarea><div class="modal-actions"><button id="cancelNewEvent">Hủy</button><button id="createEventBtn" class="primary">Tạo và kích hoạt</button></div></div></dialog>
 <dialog id="imageViewerDialog"><div class="modal"><div class="between"><h2>Xem hình chụp</h2><button id="closeImageViewer">Đóng</button></div><div class="image-stage"><img id="viewerImage" alt="Hình thẻ đã chụp"></div><div class="buttons"><button id="zoomOut">− Thu nhỏ</button><button id="zoomReset">100%</button><button id="zoomIn">＋ Phóng to</button></div></div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module" src="./admin-ui.mjs?v=3.0"></script>
+<script type="module" src="./admin-ui.mjs?v=3.1"></script>
 </body></html>

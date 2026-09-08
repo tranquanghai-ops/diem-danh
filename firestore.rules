@@ -124,6 +124,14 @@ service cloud.firestore {
             && eventId.matches('^[a-f0-9-]{36}$')
             && exists(/databases/$(database)/documents/rooms/$(room));
         }
+        function delegatedManager() {
+          return validEvent()
+            && exists(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/access/$(request.auth.uid))
+            && exists(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/access/$(request.auth.uid)).data.memberHash))
+            && get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/access/$(request.auth.uid)).data.memberName
+              == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/access/$(request.auth.uid)).data.memberHash)).data.name;
+        }
+        function eventManager() { return owner(room) || delegatedManager(); }
         allow get: if validEvent();
         allow list: if owner(room);
         allow create: if owner(room) && validEvent()
@@ -176,15 +184,33 @@ service cloud.firestore {
           allow delete: if owner(room);
         }
 
+        match /access/{uid} {
+          function validAccess() {
+            return validEvent()
+              && uid == request.auth.uid
+              && request.resource.data.keys().hasAll(['uid','memberHash','memberName','grantedAt'])
+              && request.resource.data.keys().hasOnly(['uid','memberHash','memberName','grantedAt'])
+              && request.resource.data.uid == request.auth.uid
+              && request.resource.data.memberHash.matches('^[a-f0-9]{64}$')
+              && exists(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash))
+              && request.resource.data.memberName == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash)).data.name
+              && request.resource.data.grantedAt == request.time;
+          }
+          allow get: if validEvent() && (uid == request.auth.uid || owner(room));
+          allow list, delete: if owner(room);
+          allow create, update: if validAccess();
+        }
+
         match /attendance/{mssv} {
           function accessible() { return validEvent(); }
-          function validMembership() {
+          function validScanner() {
             return request.resource.data.memberHash.matches('^[a-f0-9]{64}$')
-              && exists(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash))
-              && request.resource.data.memberName == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash)).data.name;
+              && request.resource.data.memberName is string
+              && request.resource.data.memberName.size() >= 2
+              && request.resource.data.memberName.size() <= 100;
           }
           allow get: if accessible();
-          allow list: if accessible() && owner(room);
+          allow list: if accessible() && eventManager();
           allow create: if accessible()
             && mssv.matches('^[A-Za-z0-9_-]{1,64}$')
             && request.resource.data.keys().hasAll(['mssv','scannedAt','source','memberName','memberHash','eventId','eventName','requestId','uid','createdAt'])
@@ -198,18 +224,19 @@ service cloud.firestore {
             && request.resource.data.requestId.size() == 36
             && request.resource.data.scannedAt is string
             && request.resource.data.scannedAt.size() <= 32
-            && validMembership()
+            && validScanner()
             && request.resource.data.createdAt == request.time;
           allow update: if false;
-          allow delete: if accessible() && owner(room);
+          allow delete: if accessible() && eventManager();
         }
 
         match /unread/{photoId} {
           function accessible() { return validEvent(); }
-          function validMembership() {
+          function validScanner() {
             return request.resource.data.memberHash.matches('^[a-f0-9]{64}$')
-              && exists(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash))
-              && request.resource.data.memberName == get(/databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/members/$(request.resource.data.memberHash)).data.name;
+              && request.resource.data.memberName is string
+              && request.resource.data.memberName.size() >= 2
+              && request.resource.data.memberName.size() <= 100;
           }
           allow create: if accessible()
             && photoId.matches('^[a-f0-9-]{36}$')
@@ -224,11 +251,12 @@ service cloud.firestore {
             && request.resource.data.imageData.size() > 100
             && request.resource.data.imageData.size() <= 450000
             && request.resource.data.imageData.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
-            && validMembership()
+            && validScanner()
             && request.resource.data.createdAt == request.time;
           allow get: if accessible()
-            && (owner(room) || resource.data.uid == request.auth.uid);
-          allow list, delete: if accessible() && owner(room);
+            && (eventManager() || resource.data.uid == request.auth.uid);
+          allow list: if accessible() && eventManager();
+          allow delete: if accessible() && owner(room);
           allow update: if false;
         }
       }

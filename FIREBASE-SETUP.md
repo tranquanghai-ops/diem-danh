@@ -1,4 +1,4 @@
-# Kết nối Firebase cho Điểm danh V3.0
+# Kết nối Firebase cho Điểm danh V3.1
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV chỉ cần mở `https://tranquanghai-ops.github.io/diem-danh/` để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -32,12 +32,12 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V3.0.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V3.1.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V3.0**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V3.1**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Không cần dán lại `firebaseConfig`.
 - Chọn ngày, nhấn **Tạo sự kiện**, nhập tên sự kiện và danh sách thành viên, mỗi dòng một họ tên.
 - Nút **Dùng tại link chính** đưa sự kiện đang chọn lên `https://tranquanghai-ops.github.io/diem-danh/`. Nút **Sao chép link sự kiện** tạo liên kết riêng, phù hợp khi có 2–3 sự kiện hoạt động cùng ngày.
@@ -47,7 +47,7 @@ tranquanghai-ops.github.io
 ## Cách dùng mỗi ngày
 
 - Mỗi sự kiện có tên, ngày, danh sách thành viên, liên kết và dữ liệu điểm danh riêng. Có thể tạo nhiều sự kiện trong cùng ngày.
-- Thành viên mở đúng liên kết, nhập đúng họ tên đã được GV thêm rồi mới có thể mở camera, nhập MSSV hoặc gửi ảnh.
+- Mọi người có đúng liên kết sự kiện đều được quét sau khi nhập tên người quét. Danh sách tên do GV nhập chỉ dùng để cấp quyền **SV quản lý phụ**: xem/tải toàn bộ dữ liệu sự kiện và xóa từng lượt sai. Chỉ GV được sửa sự kiện, sửa danh sách quyền hoặc dùng chức năng xóa toàn bộ.
 - Liên kết chính chỉ trỏ đến một sự kiện tại một thời điểm. Với nhiều sự kiện đồng thời, gửi liên kết riêng của từng sự kiện.
 - Danh sách trên màn hình hiển thị mới nhất ở trên; Excel/CSV xuất theo thứ tự thời gian từ cũ đến mới.
 - Ảnh chụp không quét được được lưu thành dòng **Hình chụp**. Người chụp và GV có thể mở, phóng to để kiểm tra; GV nhập MSSV hoặc xóa ảnh sau đó.

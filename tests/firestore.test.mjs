@@ -71,7 +71,7 @@ test('owner can publish the default scanner room; anonymous users can only read 
  await assertFails(setDoc(ownerDefault,{room:'b'.repeat(48),day,eventId,updatedAt:serverTimestamp()}));
 });
 
-test('event membership gates scans and keeps events separate',async()=>{
+test('event link permits scanning while the member list grants delegated management',async()=>{
  const eventRef=doc(owner,'rooms',room,'days',day,'events',eventId),memberRef=doc(owner,'rooms',room,'days',day,'events',eventId,'members',memberHash);
  await assertSucceeds(setDoc(memberRef,{name:memberName,normalized:memberNormal,createdAt:serverTimestamp()}));
  await assertSucceeds(updateDoc(memberRef,{name:'LÊ PHẠM QUỲNH ANH',normalized:memberNormal}));
@@ -80,15 +80,28 @@ test('event membership gates scans and keeps events separate',async()=>{
  assert.equal((await getDoc(doc(a,'rooms',room,'days',day,'events',eventId,'members',memberHash))).data().name,memberName);
  await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'members')));
  await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',eventId,'members')));
- const scan=(mssv,hash=memberHash,name=memberName)=>({mssv,scannedAt:'2026-09-07T10:00:00Z',source:'camera',memberName:name,memberHash:hash,eventId,eventName:'Ca sáng',requestId:'d'.repeat(36),uid:'scannerA',createdAt:serverTimestamp()});
+ await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'attendance')));
+ const scan=(uid,mssv,hash=memberHash,name=memberName)=>({mssv,scannedAt:'2026-09-07T10:00:00Z',source:'camera',memberName:name,memberHash:hash,eventId,eventName:'Ca sáng',requestId:'d'.repeat(36),uid,createdAt:serverTimestamp()});
+ const ordinary=doc(b,'rooms',room,'days',day,'events',eventId,'attendance','12000001');
+ await assertSucceeds(setDoc(ordinary,scan('scannerB','12000001','f'.repeat(64),'Người quét thường')));
+ await assertFails(deleteDoc(ordinary));
+ const accessA=doc(a,'rooms',room,'days',day,'events',eventId,'access','scannerA');
+ await assertFails(setDoc(doc(b,'rooms',room,'days',day,'events',eventId,'access','scannerB'),{uid:'scannerB',memberHash:'f'.repeat(64),memberName:'Người lạ',grantedAt:serverTimestamp()}));
+ await assertSucceeds(setDoc(accessA,{uid:'scannerA',memberHash,memberName,grantedAt:serverTimestamp()}));
+ await assertSucceeds(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'attendance')));
+ await assertFails(getDocs(collection(b,'rooms',room,'days',day,'events',eventId,'attendance')));
+ await assertSucceeds(deleteDoc(doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12000001')));
  const attendance=doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12300325');
- await assertSucceeds(setDoc(attendance,scan('12300325')));
- await assertFails(setDoc(doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12300326'),scan('12300326','f'.repeat(64),'Người lạ')));
- await assertFails(deleteDoc(attendance));
- await assertSucceeds(deleteDoc(doc(owner,'rooms',room,'days',day,'events',eventId,'attendance','12300325')));
+ await assertSucceeds(setDoc(attendance,scan('scannerA','12300325')));
+ await assertFails(setDoc(doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12300326'),scan('scannerA','12300326','f'.repeat(64),'')));
+ await assertSucceeds(deleteDoc(attendance));
+ await assertFails(deleteDoc(doc(a,'rooms',room,'days',day,'events',eventId)));
+ await assertFails(deleteDoc(doc(a,'rooms',room,'days',day,'events',eventId,'members',memberHash)));
  const event2='22222222-2222-4222-8222-222222222222';
  await assertSucceeds(setDoc(doc(owner,'rooms',room,'days',day,'events',event2),{eventName:'Ca chiều',day,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
- await assertFails(setDoc(doc(a,'rooms',room,'days',day,'events',event2,'attendance','12300325'),{...scan('12300325'),eventId:event2,eventName:'Ca chiều'}));
+ await assertSucceeds(setDoc(doc(a,'rooms',room,'days',day,'events',event2,'attendance','12300325'),{...scan('scannerA','12300325'),eventId:event2,eventName:'Ca chiều'}));
+ await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',event2,'attendance')));
+ await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',event2,'attendance')));
  await assertSucceeds(setDoc(doc(owner,'publicEvents',eventId),{room,day,eventId,updatedAt:serverTimestamp()}));
  assert.equal((await getDoc(doc(b,'publicEvents',eventId))).data().eventId,eventId);
 });
@@ -98,8 +111,10 @@ test('event photo is visible only to its uploader and owner',async()=>{
  const photo=db=>doc(db,'rooms',room,'days',day,'events',eventId,'unread',id);
  await assertSucceeds(setDoc(photo(a),{imageData,takenAt:'2026-09-07T10:05:00Z',memberName,memberHash,eventId,eventName:'Ca sáng',uid:'scannerA',createdAt:serverTimestamp()}));
  await assertSucceeds(getDoc(photo(a)));await assertFails(getDoc(photo(b)));
- await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'unread')));
+ await assertSucceeds(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'unread')));
+ await assertFails(getDocs(collection(b,'rooms',room,'days',day,'events',eventId,'unread')));
  await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',eventId,'unread')));
+ await assertFails(deleteDoc(photo(a)));
  await assertSucceeds(deleteDoc(photo(owner)));
 });
 test('scanner can upload and view their own photo; only owner can list or delete it',async()=>{

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V3.0</title>
+  <title>Điểm danh Barcode - MSSV V3.1</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -74,21 +74,21 @@
     .stat b{font-size:24px}.stat span{font-size:12px}
     .list-card,.settings{margin-top:12px}
     .card h2{margin:0;font-size:16px}
-    .table-wrap{max-height:320px}table{min-width:0;width:100%;font-size:12px}th,td{padding:10px 6px}
+    .table-wrap{max-height:320px}table{min-width:610px;width:100%;font-size:12px}th,td{padding:10px 6px}
     .settings summary{cursor:pointer;font-size:14px;font-weight:650}
     .settings[open] summary{margin-bottom:16px}
     .scanner-name{margin-bottom:12px}.scanner-name input{font-size:16px;font-weight:650}
     footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.6;padding:22px 8px 2px}
-    @media(max-width:520px){th:last-child,td:last-child{display:none}.status{top:6px}.buttons{gap:6px}}
+    @media(max-width:520px){.status-col{display:none}.status{top:6px}.buttons{gap:6px}}
   </style>
 </head>
 <body>
 <div class="app">
   <section class="card scanner-name">
     <div id="eventInfo" class="note">Đang tải sự kiện…</div>
-    <label for="scannerName">Họ tên thành viên</label>
-    <div class="row"><input id="scannerName" maxlength="100" autocomplete="name" placeholder="Nhập đúng họ tên GV đã thêm" style="flex:1"><button class="primary" id="verifyMemberBtn">Xác nhận</button></div>
-    <p id="memberHint" class="note">Bạn phải có tên trong sự kiện mới mở được camera.</p>
+    <label for="scannerName">Tên người quét</label>
+    <div class="row"><input id="scannerName" maxlength="100" autocomplete="name" placeholder="Nhập họ tên người đang dùng máy" style="flex:1"><button class="primary" id="verifyMemberBtn">Tiếp tục</button></div>
+    <p id="memberHint" class="note">Có link sự kiện là được quét. Tên khớp danh sách của GV sẽ nhận thêm quyền quản lý phụ.</p>
   </section>
 
   <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">
@@ -119,7 +119,7 @@
     <div class="row between"><h2 id="attendanceTitle">Danh sách điểm danh</h2><button class="success" id="excelBtn">↓ Excel</button></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>STT</th><th>MSSV</th><th>Thời gian</th><th>Trạng thái</th></tr></thead>
+        <thead><tr><th>STT</th><th>MSSV</th><th>Người quét</th><th>Thời gian</th><th class="status-col">Trạng thái</th><th>Xóa</th></tr></thead>
         <tbody id="attendanceBody"></tbody>
       </table>
       <div id="emptyTable" class="empty">Chưa có sinh viên điểm danh.</div>
@@ -136,7 +136,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V3.0</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V3.1</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -256,9 +256,12 @@
     [...rows].reverse().forEach((r,i)=>{
       const tr = document.createElement('tr');
       const code=r.kind==='photo'?'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Hình chụp</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
-      tr.innerHTML = '<td>'+(rows.length-i)+'</td><td>'+code+'</td><td>'+escapeHtml(fmtTime(r.time))+'</td><td><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
+      const canManage=window.attendanceCloud?.owner||window.attendanceCloud?.delegated;
+      const remove=r.kind==='scan'&&canManage?'<button class="danger" data-delete-scan="'+escapeHtml(r.mssv)+'">Xóa</button>':'—';
+      tr.innerHTML = '<td>'+(rows.length-i)+'</td><td>'+code+'</td><td>'+escapeHtml(r.memberName||r.scannerName||'Không rõ')+'</td><td>'+escapeHtml(fmtTime(r.time))+'</td><td class="status-col"><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td><td>'+remove+'</td>';
       body.appendChild(tr);
     });
+    $('excelBtn').hidden=!!window.attendanceCloud?.enabled&&!(window.attendanceCloud.owner||window.attendanceCloud.delegated);
   }
   let viewerScale=1;
   function applyZoom(){viewerScale=Math.max(.5,Math.min(4,viewerScale));$('viewerImage').style.width=(viewerScale*100)+'%';$('zoomReset').textContent=Math.round(viewerScale*100)+'%';}
@@ -266,7 +269,7 @@
     const photo=(currentBatch()?.attendance||[]).find(r=>r.kind==='photo'&&r.id===id);if(!photo?.imageData)return;
     viewerScale=1;$('viewerImage').src=photo.imageData;applyZoom();$('imageViewerDialog').showModal();
   }
-  $('attendanceBody').onclick=e=>{const button=e.target.closest('[data-view-photo]');if(button)viewPhoto(button.dataset.viewPhoto);};
+  $('attendanceBody').onclick=e=>{const photo=e.target.closest('[data-view-photo]'),remove=e.target.closest('[data-delete-scan]');if(photo)viewPhoto(photo.dataset.viewPhoto);if(remove&&confirm('Xóa lượt quét MSSV '+remove.dataset.deleteScan+'?'))window.attendanceCloud.deleteAttendance(remove.dataset.deleteScan).catch(error=>setStatus('error','Không xóa được.',error.message));};
   $('closeImageViewer').onclick=()=>$('imageViewerDialog').close();
   $('zoomIn').onclick=()=>{viewerScale+=.25;applyZoom();};$('zoomOut').onclick=()=>{viewerScale-=.25;applyZoom();};$('zoomReset').onclick=()=>{viewerScale=1;applyZoom();};
   let cameraRequest = 0;
@@ -586,6 +589,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=3.0"></script>
+<script type="module" src="./cloud-ui.mjs?v=3.1"></script>
 </body>
 </html>
