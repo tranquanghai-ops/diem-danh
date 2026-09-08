@@ -20,7 +20,7 @@ export class FirebaseAttendance {
     this.change=change;this.notice=notice;this.rows=[];this.photos=[];this.ownPhotos=[];this.events=[];this.allEvents=[];this.eventMappings=[];this.linkMappings=[];this.members=[];this.admins=[];this.eventDays=new Set();this.currentEvent=null;
     this.day=vietnamDay();this.eventId='';this.eventName='';this.memberName='';this.memberHash='';this.authorized=false;this.delegated=false;
     this.scans=0;this.duplicates=0;this.connected=false;this.enabled=false;this.serverReady=false;this.owner=false;this.admin=false;this.adminName='';
-    this.message='Chưa kết nối Firebase';this.scannerUrl=new URL(scannerUrl,location.href);this.scannerUrl.hash='';
+    this.message='Chưa kết nối dữ liệu';this.scannerUrl=new URL(scannerUrl,location.href);this.scannerUrl.hash='';
     try{this.settings=JSON.parse(localStorage.getItem(SETTINGS)||'null');}catch{this.settings=null;}
     window.addEventListener('online',()=>void this.flush());
     window.addEventListener('offline',()=>{this.serverReady=false;this.message='Mất mạng — lượt quét mới sẽ chờ gửi';this.change();});

@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.2.1';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.2.1-ui1';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 const $=id=>document.getElementById(id),cloud=new FirebaseAttendance({scannerUrl:'../',change:render});window.attendanceCloud=cloud;
@@ -15,12 +15,13 @@ function renderCalendar(){
 }
 function render(){
   const manager=cloud.manager(),googleSignedIn=!!cloud.auth?.currentUser?.providerData?.some(p=>p.providerId==='google.com');$('adminStatus').className='status'+(cloud.message.includes('không')||cloud.message.includes('Chưa')?' error':'');$('adminStatus').textContent=cloud.message;
-  $('loginBtn').hidden=manager;$('logoutBtn').hidden=!googleSignedIn;$('manager').hidden=!manager;$('ownerAdminPanel').hidden=!cloud.owner;if(!manager)return;
+  $('loginBtn').hidden=manager;$('loginBtn').parentElement.hidden=manager;$('logoutBtn').hidden=!googleSignedIn;$('manager').hidden=!manager;$('ownerAdminPanel').hidden=!cloud.owner;
+  const compactSync=manager&&/^Đã đồng bộ:/.test(cloud.message);$('accessCard').hidden=compactSync;if(!manager)return;
   $('roleLabel').textContent=cloud.owner?'Chủ sở hữu':'Admin';$('day').value=cloud.day;renderCalendar();
   const options=['<option value="">'+(cloud.events.length?'Chọn sự kiện':'Chưa có sự kiện')+'</option>',...cloud.events.map(e=>`<option value="${esc(e.id)}">${esc(e.eventName)}</option>`)].join('');if($('eventSelect').innerHTML!==options)$('eventSelect').innerHTML=options;$('eventSelect').value=cloud.eventId||'';
   if(!editingDetails){$('eventName').value=cloud.eventName||'';$('members').value=(cloud.members||[]).map(m=>m.name).join('\n');}
   const creator=cloud.currentEvent?.createdByName||cloud.currentEvent?.createdByEmail||'';$('eventCreator').textContent=cloud.eventId?'Người tạo: '+(creator||'Không ghi nhận'):'';
-  const selected=!!cloud.eventId;for(const id of ['saveEventBtn','copyLinkBtn','excelBtn','csvBtn','jsonBtn','deleteAllBtn'])$(id).disabled=!selected;$('deleteEventBtn').disabled=!cloud.canDeleteCurrentEvent();$('shareLink').value=selected?cloud.shareLink():'';
+  const selected=!!cloud.eventId,sync=$('syncStatus');sync.hidden=!selected;sync.textContent=cloud.serverReady?'✓ Đã đồng bộ':'Đang đồng bộ…';sync.className='sync-badge'+(cloud.serverReady?'':' loading');for(const id of ['saveEventBtn','copyLinkBtn','excelBtn','csvBtn','jsonBtn','deleteAllBtn'])$(id).disabled=!selected;$('deleteEventBtn').disabled=!cloud.canDeleteCurrentEvent();$('shareLink').value=selected?cloud.shareLink():'';
   const archive=cloud.allEvents||[];$('eventArchiveEmpty').hidden=!!archive.length;$('eventArchiveRows').innerHTML=archive.map((event,i)=>`<tr><td>${i+1}</td><td><b>${esc(event.eventName||'Sự kiện')}</b></td><td>${esc(event.day)}</td><td>${esc(event.createdByName||event.createdByEmail||'Không ghi nhận')}</td><td>${esc(time(event.createdAt))}</td><td><button class="primary" data-open-event="${esc(event.id)}" data-event-day="${esc(event.day)}">Mở</button></td></tr>`).join('');
   $('adminRows').innerHTML=(cloud.admins||[]).map(a=>`<tr><td>${esc(a.name||'—')}</td><td>${esc(a.email)}</td><td><button class="danger" data-remove-admin="${esc(a.email)}">Xóa quyền</button></td></tr>`).join('');$('adminEmpty').hidden=!!cloud.admins?.length;
   const rows=cloud.rows||[];$('savedCount').textContent=rows.length+' lượt';$('empty').hidden=!!rows.length;$('rows').innerHTML=[...rows].reverse().map((r,i)=>`<tr><td class="stt-col">${rows.length-i}</td><td class="mssv-col"><b>${esc(r.mssv)}</b></td><td class="member-col">${esc(r.memberName||'Không rõ')}</td><td class="delete-col"><button class="danger" data-delete-scan="${esc(r.mssv)}">Xóa</button></td><td class="time-col">${esc(time(r.time))}</td><td class="event-col">${esc(r.eventName||cloud.eventName)}</td></tr>`).join('');
