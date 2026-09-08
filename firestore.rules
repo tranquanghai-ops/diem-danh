@@ -151,14 +151,17 @@ service cloud.firestore {
         allow list: if manager(room);
         allow create: if manager(room) && validEvent()
           && request.resource.data.keys().hasAll(['eventName','day','createdAt','updatedAt'])
-          && request.resource.data.keys().hasOnly(['eventName','day','createdByUid','createdByEmail','createdAt','updatedAt'])
+          && request.resource.data.keys().hasOnly(['eventName','day','createdByUid','createdByEmail','createdByName','createdAt','updatedAt'])
           && request.resource.data.eventName is string
           && request.resource.data.eventName.size() > 0
           && request.resource.data.eventName.size() <= 100
           && request.resource.data.day == day
-          && (owner(room) || (request.resource.data.keys().hasAll(['createdByUid','createdByEmail'])
+          && (owner(room) || (request.resource.data.keys().hasAll(['createdByUid','createdByEmail','createdByName'])
             && request.resource.data.createdByUid == request.auth.uid
-            && request.resource.data.createdByEmail == request.auth.token.email))
+            && request.resource.data.createdByEmail == request.auth.token.email
+            && request.resource.data.createdByName is string
+            && request.resource.data.createdByName.size() > 0
+            && request.resource.data.createdByName.size() <= 100))
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;
         allow update: if manager(room) && validEvent()

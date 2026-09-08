@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f172a">
-  <title>Quản lý điểm danh V3.7.1</title>
+  <title>Quản lý điểm danh V1.1</title>
   <style>
     :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#2563eb;--success:#16a34a;--danger:#dc2626}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.app{max-width:1050px;margin:auto;padding:18px}
@@ -13,14 +13,15 @@
     dialog{border:0;border-radius:16px;padding:0;width:min(620px,calc(100vw - 24px));box-shadow:0 24px 80px #0f172a55}dialog::backdrop{background:#02061799}.modal{padding:18px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.image-stage{height:auto;max-height:min(68vh,650px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}.image-stage img{display:block;width:100%;height:auto;max-width:none;transition:width .12s}
     .attendance-table{min-width:600px;table-layout:fixed}.attendance-table .stt-col{width:48px}.attendance-table .mssv-col{width:105px}.attendance-table .member-col{width:115px}.attendance-table .delete-col{width:62px}.attendance-table .time-col{width:145px}.attendance-table .event-col{width:125px}.attendance-table .delete-col button{padding:7px 9px}
     .calendar{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px;max-width:390px}.calendar-head{display:flex;align-items:center;justify-content:space-between}.calendar-week,.calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}.calendar-week{font-size:11px;color:var(--muted);margin:8px 0 4px}.calendar-day{position:relative;padding:8px 3px;background:#f8fafc;font-weight:600}.calendar-day.selected{background:#dbeafe;color:#1d4ed8}.calendar-day i{position:absolute;width:6px;height:6px;border-radius:50%;background:#16a34a;bottom:2px;left:50%;transform:translateX(-50%)}
+    footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.7;padding:24px 8px 4px}
     @media(max-width:600px){.app{padding:10px}.buttons button,.buttons a{flex:1}h1{font-size:20px}}
     [hidden]{display:none!important}
   </style>
 </head>
 <body>
 <main class="app">
-  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V3.7.1 • Built by Trần Quang Hải</span></div><a class="button" href="../">Mở máy quét</a></header>
-  <section class="card"><div id="adminStatus" class="status">Đang kiểm tra đăng nhập…</div><div class="buttons"><button id="loginBtn" class="primary">Đăng nhập Google</button><button id="logoutBtn" class="danger" hidden>Đăng xuất</button></div></section>
+  <header class="between"><h1>Quản lý điểm danh</h1><a class="button" href="../">Mở máy quét</a></header>
+  <section class="card"><div id="adminStatus" class="status">Đang kiểm tra đăng nhập…</div><div class="buttons"><button id="loginBtn" class="primary">Đăng nhập Google</button></div></section>
 
   <div id="manager" hidden>
     <p class="note">Quyền hiện tại: <b id="roleLabel"></b></p>
@@ -30,10 +31,11 @@
       <div class="table-wrap" style="margin-top:12px;max-height:220px"><table><thead><tr><th>Tên</th><th>Email</th><th>Thao tác</th></tr></thead><tbody id="adminRows"></tbody></table><p id="adminEmpty" class="note" style="text-align:center">Chưa có admin.</p></div>
     </section>
     <section class="card">
-      <div class="between"><h2>Sự kiện và thành viên</h2><button id="newEventBtn" class="primary">＋ Tạo sự kiện</button></div>
-      <div class="row"><div style="flex:0 1 190px"><label for="day">Ngày</label><input id="day" type="date"></div><div style="align-self:end"><button id="toggleCalendarBtn" type="button">📅 Lịch trong ngày</button></div><div style="flex:1;min-width:220px"><label for="eventSelect">Sự kiện trong ngày</label><select id="eventSelect"><option value="">Chưa có sự kiện</option></select></div></div>
+      <div class="between"><h2>Sự kiện và thành viên</h2><div class="buttons" style="margin-top:0"><button id="newEventBtn" class="primary">＋ Tạo sự kiện</button><button id="logoutBtn" class="danger" hidden>Đăng xuất</button></div></div>
+      <div class="row"><div style="flex:0 1 190px"><label for="day">Ngày</label><input id="day" type="date"></div><div style="align-self:end"><button id="toggleCalendarBtn" type="button">📅 Lịch sự kiện</button></div><div style="align-self:end"><button id="showAllEventsBtn" type="button">Tất cả sự kiện</button></div><div style="flex:1;min-width:220px"><label for="eventSelect">Sự kiện trong ngày</label><select id="eventSelect"><option value="">Chưa có sự kiện</option></select></div></div>
       <div id="eventCalendar" class="calendar" hidden><div class="calendar-head"><button id="prevMonth" type="button">‹</button><b id="calendarLabel"></b><button id="nextMonth" type="button">›</button></div><div class="calendar-week"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div><div id="calendarDays" class="calendar-days"></div><p class="note" style="margin:8px 0 0"><span style="color:#16a34a">●</span> Ngày có sự kiện đã lưu</p></div>
       <label for="eventName">Tên sự kiện đang chọn</label><input id="eventName" maxlength="100" placeholder="Ví dụ: Điểm danh Đồ án Nội thất – ca sáng">
+      <p id="eventCreator" class="note"></p>
       <label for="members">Danh sách SV được cấp quyền quản lý phụ — mỗi dòng một họ tên</label><textarea id="members" placeholder="Lê Phạm Quỳnh Anh&#10;Nguyễn Văn Bình"></textarea>
       <div class="buttons"><button id="saveEventBtn" class="primary">Lưu thay đổi</button><button id="activateBtn" class="success">Dùng tại link chính</button><button id="copyLinkBtn">Sao chép link sự kiện</button><button id="deleteEventBtn" class="danger">Xóa sự kiện</button></div>
       <label for="shareLink">Liên kết dành cho thành viên</label><input id="shareLink" readonly>
@@ -51,11 +53,13 @@
       <div class="table-wrap"><table class="attendance-table"><thead><tr><th class="stt-col">STT</th><th class="mssv-col">MSSV</th><th class="member-col">Người quét</th><th class="delete-col">Xóa</th><th class="time-col">Ngày quét</th><th class="event-col">Sự kiện</th></tr></thead><tbody id="rows"></tbody></table><p id="empty" class="note" style="text-align:center">Chưa có dữ liệu.</p></div>
     </section>
   </div>
+  <footer><div>Quản lý điểm danh • V1.1</div><div>Built by Trần Quang Hải</div></footer>
 </main>
 
 <dialog id="newEventDialog"><div class="modal"><h2>Tạo sự kiện mới</h2><label for="newEventName">Tên sự kiện</label><input id="newEventName" maxlength="100"><label for="newMembers">Danh sách SV được cấp quyền quản lý phụ — mỗi dòng một tên</label><textarea id="newMembers"></textarea><div class="modal-actions"><button id="cancelNewEvent">Hủy</button><button id="createEventBtn" class="primary">Tạo và kích hoạt</button></div></div></dialog>
 <dialog id="imageViewerDialog"><div class="modal"><div class="between"><h2>Xem hình chụp</h2><button id="closeImageViewer">Đóng</button></div><div class="image-stage"><img id="viewerImage" alt="Hình thẻ đã chụp"></div><div class="buttons"><button id="zoomOut">− Thu nhỏ</button><button id="zoomReset">100%</button><button id="zoomIn">＋ Phóng to</button></div></div></dialog>
+<dialog id="eventArchiveDialog" style="width:min(820px,calc(100vw - 24px))"><div class="modal"><div class="between"><div><h2>Tất cả sự kiện</h2><p class="note" style="margin:4px 0">Sự kiện mới nhất được xếp trên cùng.</p></div><button id="closeEventArchive">Đóng</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>STT</th><th>Sự kiện</th><th>Ngày</th><th>Người tạo</th><th>Thời gian tạo</th><th></th></tr></thead><tbody id="eventArchiveRows"></tbody></table><p id="eventArchiveEmpty" class="note" style="text-align:center">Chưa có sự kiện.</p></div></div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module" src="./admin-ui.mjs?v=3.7.1"></script>
+<script type="module" src="./admin-ui.mjs?v=1.1"></script>
 </body></html>

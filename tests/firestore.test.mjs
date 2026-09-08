@@ -152,8 +152,8 @@ test('owner manages admins; admin operates events but only deletes own events',a
  await assertFails(deleteDoc(doc(admin,'rooms',room,'admins',email)));
  const ownEvent='55555555-5555-4555-8555-555555555555',ownerEvent='66666666-6666-4666-8666-666666666666';
  const ownRef=doc(admin,'rooms',room,'days',day,'events',ownEvent),ownerRef=doc(owner,'rooms',room,'days',day,'events',ownerEvent);
- await assertSucceeds(setDoc(ownRef,{eventName:'Sự kiện admin',day,createdByUid:'adminUid',createdByEmail:email,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
- await assertSucceeds(setDoc(ownerRef,{eventName:'Sự kiện GV',day,createdByUid:'teacher',createdByEmail:'teacher@example.com',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+ await assertSucceeds(setDoc(ownRef,{eventName:'Sự kiện admin',day,createdByUid:'adminUid',createdByEmail:email,createdByName:'Quản trị viên',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+ await assertSucceeds(setDoc(ownerRef,{eventName:'Sự kiện GV',day,createdByUid:'teacher',createdByEmail:'teacher@example.com',createdByName:'Trần Quang Hải',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
  await assertSucceeds(updateDoc(ownRef,{eventName:'Admin cập nhật',updatedAt:serverTimestamp()}));
  await assertSucceeds(setDoc(doc(admin,'publicEvents',ownEvent),{room,day,eventId:ownEvent,updatedAt:serverTimestamp()}));
  await assertSucceeds(getDocs(query(collection(admin,'publicEvents'),where('room','==',room))));
