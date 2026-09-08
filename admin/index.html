@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f172a">
-  <title>Quản lý điểm danh V3.5</title>
+  <title>Quản lý điểm danh V3.6</title>
   <style>
     :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#2563eb;--success:#16a34a;--danger:#dc2626}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.app{max-width:1050px;margin:auto;padding:18px}
@@ -10,14 +10,15 @@
     button,.button{border:0;border-radius:10px;padding:10px 13px;font:inherit;font-weight:700;cursor:pointer;background:#eaf0f8;color:var(--text);text-decoration:none}.primary{background:var(--primary);color:#fff}.success{background:var(--success);color:#fff}.danger{background:#fee2e2;color:#991b1b}button:disabled{opacity:.45;cursor:not-allowed}
     label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:9px 0 5px}input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font:inherit;background:#fff}textarea{min-height:145px;resize:vertical}.note{font-size:12px;color:var(--muted);line-height:1.5}.status{padding:11px;border-radius:10px;background:#eef2ff}.status.error{background:#fee2e2;color:#991b1b}.version{font-size:12px;color:var(--muted)}
     .table-wrap{overflow:auto;max-height:430px;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}th,td{padding:9px;border-bottom:1px solid var(--line);text-align:left}th{position:sticky;top:0;background:#f8fafc;z-index:1}.photo-link{padding:5px 9px;color:#1d4ed8;background:#dbeafe;text-decoration:underline}.inline-input{min-width:150px;padding:7px}
-    dialog{border:0;border-radius:16px;padding:0;width:min(620px,calc(100vw - 24px));box-shadow:0 24px 80px #0f172a55}dialog::backdrop{background:#02061799}.modal{padding:18px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.image-stage{height:min(68vh,650px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}.image-stage img{display:block;width:100%;max-width:none;transition:width .12s}
+    dialog{border:0;border-radius:16px;padding:0;width:min(620px,calc(100vw - 24px));box-shadow:0 24px 80px #0f172a55}dialog::backdrop{background:#02061799}.modal{padding:18px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.image-stage{height:auto;max-height:min(68vh,650px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}.image-stage img{display:block;width:100%;height:auto;max-width:none;transition:width .12s}
+    .attendance-table{min-width:600px;table-layout:fixed}.attendance-table .stt-col{width:48px}.attendance-table .mssv-col{width:105px}.attendance-table .member-col{width:115px}.attendance-table .delete-col{width:62px}.attendance-table .time-col{width:145px}.attendance-table .event-col{width:125px}.attendance-table .delete-col button{padding:7px 9px}
     @media(max-width:600px){.app{padding:10px}.buttons button,.buttons a{flex:1}h1{font-size:20px}}
     [hidden]{display:none!important}
   </style>
 </head>
 <body>
 <main class="app">
-  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V3.5 • Built by Trần Quang Hải</span></div><a class="button" href="../">Mở máy quét</a></header>
+  <header class="between"><div><h1>Quản lý điểm danh</h1><span class="version">V3.6 • Built by Trần Quang Hải</span></div><a class="button" href="../">Mở máy quét</a></header>
   <section class="card"><div id="adminStatus" class="status">Đang kiểm tra đăng nhập…</div><div class="buttons"><button id="loginBtn" class="primary">Đăng nhập Google</button></div></section>
 
   <div id="manager" hidden>
@@ -39,7 +40,7 @@
     <section class="card">
       <div class="between"><h2>Danh sách điểm danh</h2><b id="savedCount">0 lượt</b></div>
       <div class="buttons"><button id="excelBtn" class="success">↓ Excel</button><button id="csvBtn">↓ CSV</button><button id="jsonBtn">Sao lưu JSON</button><button id="deleteAllBtn" class="danger">Xóa toàn bộ sự kiện</button></div>
-      <div class="table-wrap"><table><thead><tr><th>STT</th><th>MSSV</th><th>Thành viên</th><th>Sự kiện</th><th>Thời gian</th><th>Thao tác</th></tr></thead><tbody id="rows"></tbody></table><p id="empty" class="note" style="text-align:center">Chưa có dữ liệu.</p></div>
+      <div class="table-wrap"><table class="attendance-table"><thead><tr><th class="stt-col">STT</th><th class="mssv-col">MSSV</th><th class="member-col">Người quét</th><th class="delete-col">Xóa</th><th class="time-col">Ngày quét</th><th class="event-col">Sự kiện</th></tr></thead><tbody id="rows"></tbody></table><p id="empty" class="note" style="text-align:center">Chưa có dữ liệu.</p></div>
     </section>
   </div>
 </main>
@@ -48,5 +49,5 @@
 <dialog id="imageViewerDialog"><div class="modal"><div class="between"><h2>Xem hình chụp</h2><button id="closeImageViewer">Đóng</button></div><div class="image-stage"><img id="viewerImage" alt="Hình thẻ đã chụp"></div><div class="buttons"><button id="zoomOut">− Thu nhỏ</button><button id="zoomReset">100%</button><button id="zoomIn">＋ Phóng to</button></div></div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module" src="./admin-ui.mjs?v=3.3"></script>
+<script type="module" src="./admin-ui.mjs?v=3.6"></script>
 </body></html>

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V3.5</title>
+  <title>Điểm danh Barcode - MSSV V3.6</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -65,8 +65,8 @@
     .scan-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
     .scan-actions button{padding:12px 6px;font-size:14px}
     .photo-preview{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#0f172a}
-    .image-stage{height:min(68vh,620px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}
-    .image-stage img{display:block;width:100%;max-width:none;transition:width .12s ease}
+    .image-stage{height:auto;max-height:min(68vh,620px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}
+    .image-stage img{display:block;width:100%;height:auto;max-width:none;transition:width .12s ease}
     .photo-link{padding:5px 9px;color:#1d4ed8;background:#dbeafe;text-decoration:underline}
     .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 10px}
     .stat{text-align:center;padding:8px 4px;background:#f8fafc;border:0}
@@ -74,6 +74,7 @@
     .list-card,.settings{margin-top:12px}
     .card h2{margin:0;font-size:16px}
     .table-wrap{max-height:320px}table{min-width:610px;width:100%;font-size:12px}th,td{padding:10px 6px}
+    .attendance-table{min-width:480px;table-layout:fixed}.attendance-table .stt-col{width:42px}.attendance-table .mssv-col{width:100px}.attendance-table .scanner-col{width:92px}.attendance-table .delete-col{width:58px}.attendance-table .time-col{width:132px}.attendance-table .status-col{width:105px}.attendance-table .delete-col button{padding:7px 9px}.attendance-table .time-col{font-size:11px;white-space:normal}
     .settings summary{cursor:pointer;font-size:14px;font-weight:650}
     .settings[open] summary{margin-bottom:16px}
     .scanner-name{margin-bottom:12px}.scanner-name input{font-size:16px;font-weight:650}
@@ -117,8 +118,8 @@
   <section class="card list-card">
     <div class="row between"><h2 id="attendanceTitle">Danh sách điểm danh</h2><button class="success" id="excelBtn">↓ Excel</button></div>
     <div class="table-wrap">
-      <table>
-        <thead><tr><th>STT</th><th>MSSV</th><th>Người quét</th><th>Thời gian</th><th class="status-col">Trạng thái</th><th>Xóa</th></tr></thead>
+      <table class="attendance-table">
+        <thead><tr><th class="stt-col">STT</th><th class="mssv-col">MSSV</th><th class="scanner-col">Người quét</th><th class="delete-col">Xóa</th><th class="time-col">Ngày quét</th><th class="status-col">Trạng thái</th></tr></thead>
         <tbody id="attendanceBody"></tbody>
       </table>
       <div id="emptyTable" class="empty">Chưa có sinh viên điểm danh.</div>
@@ -135,7 +136,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V3.5</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V3.6</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -267,7 +268,7 @@
       const code=r.kind==='photo'?(validStudentId(r.mssv)?'<b>'+escapeHtml(r.mssv)+'</b><br>':'')+'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Xem hình</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
       const canManage=window.attendanceCloud?.owner||window.attendanceCloud?.delegated;
       const remove=r.kind==='scan'&&canManage?'<button class="danger" data-delete-scan="'+escapeHtml(r.mssv)+'">Xóa</button>':'—';
-      tr.innerHTML = '<td>'+(rows.length-i)+'</td><td>'+code+'</td><td>'+escapeHtml(r.memberName||r.scannerName||'Không rõ')+'</td><td>'+escapeHtml(fmtTime(r.time))+'</td><td class="status-col"><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td><td>'+remove+'</td>';
+      tr.innerHTML = '<td class="stt-col">'+(rows.length-i)+'</td><td class="mssv-col">'+code+'</td><td class="scanner-col">'+escapeHtml(r.memberName||r.scannerName||'Không rõ')+'</td><td class="delete-col">'+remove+'</td><td class="time-col">'+escapeHtml(fmtTime(r.time))+'</td><td class="status-col"><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
       body.appendChild(tr);
     });
     $('excelBtn').hidden=!!window.attendanceCloud?.enabled&&!(window.attendanceCloud.owner||window.attendanceCloud.delegated);
@@ -597,6 +598,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=3.5"></script>
+<script type="module" src="./cloud-ui.mjs?v=3.6"></script>
 </body>
 </html>
