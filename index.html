@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V3.4</title>
+  <title>Điểm danh Barcode - MSSV V3.5</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -62,14 +62,13 @@
     .scanner-card{padding:12px}
     .scanner-wrap{aspect-ratio:16/9;max-height:340px}
     .scan-frame{top:32%;height:30%}
-    .scan-actions{display:grid;grid-template-columns:1.45fr 1fr;gap:6px}
+    .scan-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
     .scan-actions button{padding:12px 6px;font-size:14px}
-    .scan-actions .photo{grid-column:1/-1}
     .photo-preview{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#0f172a}
     .image-stage{height:min(68vh,620px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}
     .image-stage img{display:block;width:100%;max-width:none;transition:width .12s ease}
     .photo-link{padding:5px 9px;color:#1d4ed8;background:#dbeafe;text-decoration:underline}
-    .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+    .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 10px}
     .stat{text-align:center;padding:8px 4px;background:#f8fafc;border:0}
     .stat b{font-size:24px}.stat span{font-size:12px}
     .list-card,.settings{margin-top:12px}
@@ -97,6 +96,11 @@
   </div>
 
   <section class="card scanner-card" aria-label="Quét thẻ sinh viên">
+    <div class="stats">
+      <div class="stat"><b id="countAttendance">0</b><span class="muted">Có mặt</span></div>
+      <div class="stat"><b id="countScans">0</b><span class="muted">Lượt quét</span></div>
+      <div class="stat"><b id="countDuplicates">0</b><span class="muted">Trùng</span></div>
+    </div>
     <div class="scanner-wrap" id="scannerBox">
       <video id="video" autoplay playsinline webkit-playsinline muted></video>
       <div class="scan-frame"></div>
@@ -106,12 +110,7 @@
       <button class="primary" id="startBtn">▶ Bắt đầu quét</button>
       <button class="secondary" id="stopBtn" disabled>■ Dừng</button>
       <button class="secondary" id="manualBtn">Nhập MSSV</button>
-      <button class="warn photo" id="photoBtn">📷 Chụp vùng mã để nhập sau</button>
-    </div>
-    <div class="stats">
-      <div class="stat"><b id="countAttendance">0</b><span class="muted">Có mặt</span></div>
-      <div class="stat"><b id="countScans">0</b><span class="muted">Lượt quét</span></div>
-      <div class="stat"><b id="countDuplicates">0</b><span class="muted">Trùng</span></div>
+      <button class="warn photo" id="photoBtn">📷 Chụp hình</button>
     </div>
   </section>
 
@@ -136,7 +135,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V3.4</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V3.5</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -598,6 +597,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=3.4"></script>
+<script type="module" src="./cloud-ui.mjs?v=3.5"></script>
 </body>
 </html>
