@@ -1,4 +1,4 @@
-# Kết nối Firebase cho Điểm danh V3.6
+# Kết nối Firebase cho Điểm danh V3.7
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV chỉ cần mở `https://tranquanghai-ops.github.io/diem-danh/` để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -15,7 +15,7 @@ Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sa
 - Chọn vị trí gần Việt Nam, chẳng hạn Singapore nếu có trong danh sách.
 - Mở tab **Rules**, thay nội dung bằng toàn bộ [firestore.rules](./firestore.rules), rồi nhấn **Publish**.
 
-Quy tắc yêu cầu người quét xác nhận đúng tên trong danh sách thành viên của sự kiện. Người quét không thể tải danh sách tên, sửa hoặc xóa bản ghi đã có. Chỉ tài khoản Google của giảng viên quản lý sự kiện và dữ liệu.
+Quy tắc bảo vệ dữ liệu người quét, quản lý phụ và admin. Chỉ chủ sở hữu được thêm hoặc xóa admin; admin chỉ được xóa sự kiện do chính mình tạo.
 
 ## 3. Bật đăng nhập
 
@@ -32,17 +32,24 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V3.6.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V3.7.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V3.6**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V3.7**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Không cần dán lại `firebaseConfig`.
 - Chọn ngày, nhấn **Tạo sự kiện**, nhập tên sự kiện và danh sách thành viên, mỗi dòng một họ tên.
 - Nút **Dùng tại link chính** đưa sự kiện đang chọn lên `https://tranquanghai-ops.github.io/diem-danh/`. Nút **Sao chép link sự kiện** tạo liên kết riêng, phù hợp khi có 2–3 sự kiện hoạt động cùng ngày.
 - Trên điện thoại SV, mở `https://tranquanghai-ops.github.io/diem-danh/` bằng Chrome. Trang tự tìm danh sách chung và ghi nhớ kết nối.
 - Khi đổi điện thoại quản lý, mở cùng liên kết và đăng nhập đúng tài khoản Google ban đầu.
+
+## Thêm admin
+
+- Đăng nhập trang quản lý bằng tài khoản chủ sở hữu.
+- Trong **Quản lý admin**, nhập đúng Gmail/email Google của người cần cấp quyền rồi bấm **Thêm admin**.
+- Admin dùng chính tài khoản Google đó để đăng nhập tại cùng địa chỉ `/admin/`.
+- Admin được tạo, sửa, kích hoạt và quản lý dữ liệu sự kiện; không được thêm/xóa admin khác và chỉ được xóa sự kiện do chính mình tạo.
 
 ## Cách dùng mỗi ngày
 
@@ -50,7 +57,7 @@ tranquanghai-ops.github.io
 - Mọi người có đúng liên kết sự kiện đều được quét sau khi nhập tên người quét. Danh sách tên do GV nhập chỉ dùng để cấp quyền **SV quản lý phụ**: xem/tải toàn bộ dữ liệu sự kiện và xóa từng lượt sai. Chỉ GV được sửa sự kiện, sửa danh sách quyền hoặc dùng chức năng xóa toàn bộ.
 - Liên kết chính chỉ trỏ đến một sự kiện tại một thời điểm. Với nhiều sự kiện đồng thời, gửi liên kết riêng của từng sự kiện.
 - Danh sách trên màn hình hiển thị mới nhất ở trên; Excel/CSV xuất theo thứ tự thời gian từ cũ đến mới.
-- Ảnh chụp không quét được chỉ lấy đúng vùng trong khung. Người chụp có thể mở lại, phóng to và nhập MSSV; GV vẫn có thể xem, hiệu chỉnh hoặc xóa từng ảnh.
+- Ảnh chụp không quét được lấy toàn bộ vùng camera đang hiển thị để thấy cả MSSV và mã vạch. Người chụp có thể mở lại, phóng to và nhập MSSV; người quản lý vẫn có thể xem, hiệu chỉnh hoặc xóa từng ảnh.
 - **Đã nhận mã — chờ gửi**: mã đã được lưu vào hàng đợi của điện thoại, chưa được máy chủ xác nhận.
 - **Đã lưu trực tuyến**: máy chủ đã xác nhận. Có thể đổi người hoặc máy mà không mất bản ghi này.
 - **Đã điểm danh trên danh sách chung**: MSSV đã tồn tại; không thêm dòng và không ghi đè thời gian.

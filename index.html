@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V3.6</title>
+  <title>Điểm danh Barcode - MSSV V3.7</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -76,6 +76,7 @@
     .table-wrap{max-height:320px}table{min-width:610px;width:100%;font-size:12px}th,td{padding:10px 6px}
     .attendance-table{min-width:480px;table-layout:fixed}.attendance-table .stt-col{width:42px}.attendance-table .mssv-col{width:100px}.attendance-table .scanner-col{width:92px}.attendance-table .delete-col{width:58px}.attendance-table .time-col{width:132px}.attendance-table .status-col{width:105px}.attendance-table .delete-col button{padding:7px 9px}.attendance-table .time-col{font-size:11px;white-space:normal}
     .settings summary{cursor:pointer;font-size:14px;font-weight:650}
+    .scan-toast{position:fixed;z-index:9999;left:50%;top:max(12px,env(safe-area-inset-top));transform:translate(-50%,-18px);width:min(92vw,430px);padding:14px 16px;border-radius:14px;color:#fff;background:#166534;box-shadow:0 14px 40px #0f172a55;opacity:0;pointer-events:none;transition:.18s}.scan-toast.show{opacity:1;transform:translate(-50%,0)}.scan-toast.warn{background:#9a3412}.scan-toast.error{background:#991b1b}.scan-toast b{display:block;font-size:17px}.scan-toast span{font-size:15px}
     .settings[open] summary{margin-bottom:16px}
     .scanner-name{margin-bottom:12px}.scanner-name input{font-size:16px;font-weight:650}
     footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.6;padding:22px 8px 2px}
@@ -83,6 +84,7 @@
   </style>
 </head>
 <body>
+<div id="scanToast" class="scan-toast" role="alert" aria-live="assertive"><b></b><span></span></div>
 <div class="app">
   <section class="card scanner-name">
     <div id="eventInfo" class="note">Đang tải sự kiện…</div>
@@ -131,12 +133,14 @@
     <summary>Tùy chọn máy quét</summary>
     <label for="cameraSelect">Camera sau</label>
     <select id="cameraSelect" aria-label="Chọn camera sau"></select>
-    <div class="buttons"><button class="secondary" id="testFeedbackBtn">🔊 Thử tiếng / rung</button></div>
+    <label for="soundSelect" style="margin-top:12px">Âm thanh khi quét</label>
+    <select id="soundSelect"><option value="bell">Chuông ngắn</option><option value="double">Ting đôi</option><option value="beep">Beep rõ</option><option value="bright">Âm báo sáng</option><option value="none">Không âm thanh</option></select>
+    <div class="buttons"><button class="secondary" id="testFeedbackBtn">🔊 Thử thành công</button><button class="secondary" id="testDuplicateBtn">⚠ Thử quét trùng</button></div>
     <p id="feedbackHint" class="note" role="status"></p>
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V3.6</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V3.7</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -177,6 +181,7 @@
 
   const STORAGE_KEY = 'barcodeAttendanceApp_v1';
   const SCANNER_NAME_KEY = 'attendance_scanner_name_v1';
+  const SOUND_KEY = 'attendance_sound_v1';
   const state = {
     data: loadData(),
     reader: null,
@@ -199,6 +204,7 @@
   const cameraSelect = $('cameraSelect');
   const scannerNameInput = $('scannerName');
   scannerNameInput.value = localStorage.getItem(SCANNER_NAME_KEY) || '';
+  $('soundSelect').value=localStorage.getItem(SOUND_KEY)||'bell';
 
   function scannerName(){ return scannerNameInput.value.trim(); }
   function requireScannerName(){
@@ -251,6 +257,8 @@
     statusBox.className = 'status' + (type ? ' ' + type : '');
     statusBox.innerHTML = '<div class="status-title">' + escapeHtml(title) + '</div>' + (detail ? '<div class="status-detail">' + escapeHtml(detail) + '</div>' : '');
   }
+  let toastTimer=0;
+  function showToast(type,title,detail){const toast=$('scanToast');toast.className='scan-toast '+(type||'');toast.querySelector('b').textContent=title||'';toast.querySelector('span').textContent=detail||'';requestAnimationFrame(()=>toast.classList.add('show'));clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2600);}
   function escapeHtml(s){ return String(s).replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 
   function render(){
@@ -463,10 +471,10 @@
     batch.scanCount=(batch.scanCount||0)+1;
     const exists=batch.attendance.some(x=>x.mssv===mssv);
     if(exists){
-      batch.duplicateCount=(batch.duplicateCount||0)+1; saveData(); render(); setStatus('warn','Đã điểm danh trước đó.',mssv); beep(false); return;
+      batch.duplicateCount=(batch.duplicateCount||0)+1; saveData(); render(); setStatus('warn','Đã điểm danh trước đó.',mssv);showToast('warn','⚠ Đã quét trùng',mssv); beep(false); return;
     }
     batch.attendance.push({mssv,time:nowIso(),source:source||'camera',scannerName:operator});
-    saveData(); render(); setStatus('success','✓ Điểm danh thành công.', 'MSSV: '+mssv); beep(true);
+    saveData(); render(); setStatus('success','✓ Điểm danh thành công.', 'MSSV: '+mssv);showToast('','✓ Điểm danh thành công','MSSV: '+mssv); beep(true);
   }
   let audioContext = null;
   function updateFeedbackHint(message){
@@ -497,16 +505,12 @@
     if(!audioContext || audioContext.state!=='running'){
       if(!await unlockAudio()) return;
     }
+    if($('soundSelect').value==='none')return;
     try{
-      const ctx=audioContext, osc=ctx.createOscillator(), gain=ctx.createGain();
-      const t=ctx.currentTime;
-      osc.type='sine'; osc.frequency.value=ok?1046:260;
-      gain.gain.setValueAtTime(.0001,t);
-      gain.gain.exponentialRampToValueAtTime(.3,t+.015);
-      gain.gain.exponentialRampToValueAtTime(.0001,t+.22);
-      osc.connect(gain).connect(ctx.destination);
-      osc.onended=()=>{osc.disconnect();gain.disconnect();};
-      osc.start(t); osc.stop(t+.24);
+      const ctx=audioContext,t=ctx.currentTime,profile=$('soundSelect').value;
+      const success={bell:[[1046,0,.20]],double:[[880,0,.11],[1320,.14,.14]],beep:[[760,0,.28]],bright:[[1200,0,.10],[1600,.11,.16]]};
+      const notes=ok?(success[profile]||success.bell):[[260,0,.16],[210,.20,.20]];
+      notes.forEach(([frequency,delay,duration])=>{const osc=ctx.createOscillator(),gain=ctx.createGain(),start=t+delay;osc.type=profile==='beep'?'square':'sine';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(.24,start+.012);gain.gain.exponentialRampToValueAtTime(.0001,start+duration);osc.connect(gain).connect(ctx.destination);osc.onended=()=>{osc.disconnect();gain.disconnect();};osc.start(start);osc.stop(start+duration+.02);});
     }catch(e){ updateFeedbackHint('Chưa phát được tiếng. Nhấn “Thử tiếng / rung” để thử lại.'); }
   }
   function vibratePhone(pattern){
@@ -522,6 +526,8 @@
     }catch(e){ $('vibrationHint').textContent='Thiết bị hoặc trình duyệt đang chặn rung.'; return false; }
   }
   $('testFeedbackBtn').onclick=()=>{ void beep(true); };
+  $('testDuplicateBtn').onclick=()=>{ void beep(false); };
+  $('soundSelect').onchange=()=>{localStorage.setItem(SOUND_KEY,$('soundSelect').value);void beep(true);};
 
   $('startBtn').onclick=startScanner;
   $('stopBtn').onclick=async()=>{ await stopScanner(); setStatus('', 'Đã dừng camera.'); };
@@ -532,9 +538,9 @@
   $('saveManual').onclick=()=>{ void unlockAudio(); const v=$('manualMssv').value.trim(); if(!v){alert('Vui lòng nhập MSSV.');return;} handleScan(v,'manual'); $('manualDialog').close(); };
   $('manualMssv').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveManual').click();});
 
-  function captureFrame({scaleOut=1,filter='none',maxWidth=Infinity}={}){
+  function captureFrame({scaleOut=1,filter='none',maxWidth=Infinity,target='.scan-frame'}={}){
     if(!state.scanning||video.readyState<2)throw new Error('Hãy bắt đầu camera trước.');
-    const frame=document.querySelector('.scan-frame').getBoundingClientRect(),box=video.getBoundingClientRect();
+    const frame=document.querySelector(target).getBoundingClientRect(),box=video.getBoundingClientRect();
     const vw=video.videoWidth,vh=video.videoHeight,scale=Math.max(box.width/vw,box.height/vh);
     const rw=vw*scale,rh=vh*scale,offsetX=(rw-box.width)/2,offsetY=(rh-box.height)/2;
     const sx=Math.max(0,(frame.left-box.left+offsetX)/scale),sy=Math.max(0,(frame.top-box.top+offsetY)/scale);
@@ -550,7 +556,7 @@
     try{
       const cloud=window.attendanceCloud;
       if(!cloud?.connected)throw new Error('Chưa kết nối danh sách chung.');
-      const canvas=captureFrame({scaleOut:1,maxWidth:1400});
+      const canvas=captureFrame({scaleOut:1,maxWidth:1400,target:'#scannerBox'});
       let imageData=canvas.toDataURL('image/jpeg',.76);
       if(imageData.length>450000)imageData=canvas.toDataURL('image/jpeg',.58);
       if(imageData.length>450000)throw new Error('Ảnh vẫn quá lớn. Đưa thẻ gần hơn rồi chụp lại.');
@@ -574,7 +580,7 @@
 
   function rowsForExport(){
     const b=currentBatch();
-    return (b?.attendance||[]).filter(r=>r.kind!=='photo'||validStudentId(r.mssv)).sort((a,b)=>a.mssv.localeCompare(b.mssv,undefined,{numeric:true})).map((r,i)=>({STT:i+1,MSSV:r.mssv,Thành_viên:r.memberName||r.scannerName||'Không ghi nhận',Sự_kiện:r.eventName||window.attendanceCloud?.eventName||'',Thời_gian:fmtTime(r.time),Trạng_thái:r.kind==='photo'?'Có ảnh đối chiếu':(r.status||'Có mặt')}));
+    return (b?.attendance||[]).filter(r=>r.kind!=='photo'||validStudentId(r.mssv)).sort((a,b)=>a.mssv.localeCompare(b.mssv,undefined,{numeric:true})).map((r,i)=>({STT:i+1,MSSV:r.mssv,'Sự kiện':r.eventName||window.attendanceCloud?.eventName||'','Thành viên quét':r.memberName||r.scannerName||'Không ghi nhận','Thời gian':fmtTime(r.time)}));
   }
   function safeFilename(value){
     return String(value||'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,80)||'diem_danh';
@@ -582,7 +588,7 @@
   $('excelBtn').onclick=()=>{
     if(!window.XLSX){alert('Không tải được thư viện Excel. Kiểm tra Internet rồi thử lại.');return;}
     const ws=XLSX.utils.json_to_sheet(rowsForExport());
-    ws['!cols']=[{wch:7},{wch:18},{wch:28},{wch:22},{wch:14}];
+    ws['!cols']=[{wch:7},{wch:18},{wch:35},{wch:28},{wch:22}];
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Diem danh');
     const cloud=window.attendanceCloud;
     const day=cloud?.enabled?cloud.day:new Date().toLocaleDateString('sv-SE');
@@ -592,12 +598,12 @@
   window.addEventListener('beforeunload',()=>stopScanner());
   window.addEventListener('pagehide',()=>stopScanner());
   window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ /* dialogs handle */ } });
-  window.attendanceUI={render,setStatus,beep,stopScanner};
+  window.attendanceUI={render,setStatus,showToast,beep,stopScanner};
   updateFeedbackHint();
   listCameras();
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=3.6"></script>
+<script type="module" src="./cloud-ui.mjs?v=3.7"></script>
 </body>
 </html>
