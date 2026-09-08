@@ -1,4 +1,4 @@
-# Kết nối Firebase cho Điểm danh V1.1
+# Kết nối Firebase cho Điểm danh V1.2
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV chỉ cần mở `https://tranquanghai-ops.github.io/diem-danh/` để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -32,16 +32,16 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.1.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.2.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.1**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.2**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Không cần dán lại `firebaseConfig`.
 - Chọn ngày, nhấn **Tạo sự kiện**, nhập tên sự kiện và danh sách thành viên, mỗi dòng một họ tên.
-- Nút **Dùng tại link chính** đưa sự kiện đang chọn lên `https://tranquanghai-ops.github.io/diem-danh/`. Nút **Sao chép link sự kiện** tạo liên kết riêng, phù hợp khi có 2–3 sự kiện hoạt động cùng ngày.
-- Trên điện thoại SV, mở `https://tranquanghai-ops.github.io/diem-danh/` bằng Chrome. Trang tự tìm danh sách chung và ghi nhớ kết nối.
+- Nút **Sao chép link sự kiện** tạo liên kết riêng ngắn gọn để gửi sinh viên. Trang chính `https://tranquanghai-ops.github.io/diem-danh/` không cho phép quét.
+- Trên điện thoại SV, mở đúng link riêng của sự kiện bằng Chrome.
 - Khi đổi điện thoại quản lý, mở cùng liên kết và đăng nhập đúng tài khoản Google ban đầu.
 
 ## Thêm admin
@@ -56,7 +56,7 @@ tranquanghai-ops.github.io
 
 - Mỗi sự kiện có tên, ngày, danh sách thành viên, liên kết và dữ liệu điểm danh riêng. Có thể tạo nhiều sự kiện trong cùng ngày.
 - Mọi người có đúng liên kết sự kiện đều được quét sau khi nhập tên người quét. Danh sách tên do GV nhập chỉ dùng để cấp quyền **SV quản lý phụ**: xem/tải toàn bộ dữ liệu sự kiện và xóa từng lượt sai. Chỉ GV được sửa sự kiện, sửa danh sách quyền hoặc dùng chức năng xóa toàn bộ.
-- Liên kết chính chỉ trỏ đến một sự kiện tại một thời điểm. Với nhiều sự kiện đồng thời, gửi liên kết riêng của từng sự kiện.
+- Mỗi sự kiện bắt buộc dùng link riêng. Link mới có dạng ngắn `?e=xxxxxxxxxx`; sự kiện cũ tự tạo mã ngắn khi Admin mở lại.
 - Danh sách trên màn hình hiển thị mới nhất ở trên; Excel/CSV sắp xếp MSSV từ nhỏ đến lớn và dùng thứ tự cột: STT, MSSV, Sự kiện, Thành viên quét, Thời gian.
 - Ảnh chụp không quét được lấy toàn bộ vùng camera đang hiển thị để thấy cả MSSV và mã vạch. Người chụp có thể mở lại, phóng to và nhập MSSV; người quản lý vẫn có thể xem, hiệu chỉnh hoặc xóa từng ảnh.
 - **Đã nhận mã — chờ gửi**: mã đã được lưu vào hàng đợi của điện thoại, chưa được máy chủ xác nhận.

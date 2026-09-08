@@ -1,7 +1,7 @@
 import {Outbox,parseConfig,validMssv,vietnamDay} from './sync-core.mjs';
 const SETTINGS='attendance_firebase_v1';
 const sdkBase='https://www.gstatic.com/firebasejs/12.18.0/';
-const EVENT_ID=/^[a-f0-9-]{36}$/;
+const EVENT_ID=/^(?:[a-f0-9]{10}|[a-f0-9-]{36})$/;
 
 function cleanName(value){return String(value||'').normalize('NFC').trim().replace(/\s+/g,' ');}
 function normalName(value){return cleanName(value).toLocaleLowerCase('vi-VN');}
@@ -17,7 +17,7 @@ function uniqueMembers(text){
 
 export class FirebaseAttendance {
   constructor({change=()=>{},notice=()=>{},scannerUrl='./'}={}){
-    this.change=change;this.notice=notice;this.rows=[];this.photos=[];this.ownPhotos=[];this.events=[];this.allEvents=[];this.eventMappings=[];this.members=[];this.admins=[];this.eventDays=new Set();this.currentEvent=null;
+    this.change=change;this.notice=notice;this.rows=[];this.photos=[];this.ownPhotos=[];this.events=[];this.allEvents=[];this.eventMappings=[];this.linkMappings=[];this.members=[];this.admins=[];this.eventDays=new Set();this.currentEvent=null;
     this.day=vietnamDay();this.eventId='';this.eventName='';this.memberName='';this.memberHash='';this.authorized=false;this.delegated=false;
     this.scans=0;this.duplicates=0;this.connected=false;this.enabled=false;this.serverReady=false;this.owner=false;this.admin=false;this.adminName='';
     this.message='Chưa kết nối Firebase';this.scannerUrl=new URL(scannerUrl,location.href);this.scannerUrl.hash='';
@@ -45,7 +45,6 @@ export class FirebaseAttendance {
     const owned=await a.getDocs(a.query(a.collection(this.db,'rooms'),a.where('ownerUid','==',result.user.uid),a.limit(1)));let room=owned.docs[0]?.id;
     if(!room&&result.user.email){
       const email=result.user.email.toLowerCase();let candidate=this.settings?.room;
-      if(!candidate){const active=await a.getDocFromServer(a.doc(this.db,'public','default'));candidate=active.exists()?active.data().room:'';}
       if(candidate&&/^[a-f0-9]{48}$/.test(candidate)){const assigned=await a.getDocFromServer(a.doc(this.db,'rooms',candidate,'admins',email));if(assigned.exists())room=candidate;else throw new Error('Tài khoản Google '+email+' chưa được thêm vào danh sách admin. Hãy đăng xuất và chọn đúng tài khoản.');}
       if(!room){const assigned=await a.getDocs(a.query(a.collectionGroup(this.db,'admins'),a.where('email','==',email),a.limit(1)));room=assigned.docs[0]?.ref.parent.parent?.id;}
     }
@@ -53,9 +52,9 @@ export class FirebaseAttendance {
     await this.join(room);this.message='Đã đăng nhập. Hãy tạo hoặc chọn sự kiện.';this.change();
   }
   async connectDefault(config){
-    await this.prepare(config);if(!this.auth.currentUser)await this.api.signInAnonymously(this.auth);const requested=new URL(location.href).searchParams.get('event');
-    const ref=requested&&EVENT_ID.test(requested)?this.api.doc(this.db,'publicEvents',requested):this.api.doc(this.db,'public','default'),target=await this.api.getDocFromServer(ref);
-    if(!target.exists())throw new Error('GV chưa kích hoạt sự kiện cho liên kết này.');const {room,day,eventId}=target.data();
+    await this.prepare(config);const params=new URL(location.href).searchParams,requested=params.get('e')||params.get('event');if(!requested||!EVENT_ID.test(requested))throw new Error('Trang chính không dùng để điểm danh. Vui lòng mở đúng link sự kiện do GV gửi.');
+    if(!this.auth.currentUser)await this.api.signInAnonymously(this.auth);const target=await this.api.getDocFromServer(this.api.doc(this.db,'publicEvents',requested));
+    if(!target.exists())throw new Error('Liên kết sự kiện không tồn tại hoặc đã đóng.');const {room,day,eventId}=target.data();
     if(!/^[a-f0-9]{48}$/.test(room)||!/^\d{4}-\d{2}-\d{2}$/.test(day)||!EVENT_ID.test(eventId))throw new Error('Liên kết sự kiện không hợp lệ.');
     await this.join(room);await this.loadEvent(day,eventId);
   }
@@ -70,22 +69,23 @@ export class FirebaseAttendance {
   manager(){return this.owner||this.admin;}
   subscribeCalendar(){
     this.unsubscribeCalendar?.();const q=this.api.query(this.api.collection(this.db,'publicEvents'),this.api.where('room','==',this.room));
-    this.unsubscribeCalendar=this.api.onSnapshot(q,snap=>{this.eventMappings=snap.docs.map(d=>({id:d.id,...d.data()}));this.eventDays=new Set(this.eventMappings.map(d=>d.day).filter(Boolean));this.change();void this.refreshEventArchive();},e=>this.error(e));
+    this.unsubscribeCalendar=this.api.onSnapshot(q,snap=>{this.linkMappings=snap.docs.map(d=>({id:d.id,...d.data()}));const unique=new Map();for(const item of this.linkMappings)if(!unique.has(item.eventId)||item.id.length<unique.get(item.eventId).id.length)unique.set(item.eventId,item);this.eventMappings=[...unique.values()];this.eventDays=new Set(this.eventMappings.map(d=>d.day).filter(Boolean));this.change();void this.refreshEventArchive();},e=>this.error(e));
     if(this.owner)this.unsubscribeAdmins=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'admins'),snap=>{this.admins=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.email.localeCompare(b.email));this.change();},e=>this.error(e));
   }
   async refreshEventArchive(){
-    if(!this.manager())return;const mappings=[...this.eventMappings],items=(await Promise.all(mappings.map(async mapping=>{try{const snap=await this.api.getDoc(this.api.doc(this.db,'rooms',this.room,'days',mapping.day,'events',mapping.eventId));return snap.exists()?{id:mapping.eventId,...mapping,...snap.data()}:null;}catch{return null;}}))).filter(Boolean);
+    if(!this.manager())return;const mappings=[...this.eventMappings],items=(await Promise.all(mappings.map(async mapping=>{try{const snap=await this.api.getDoc(this.api.doc(this.db,'rooms',this.room,'days',mapping.day,'events',mapping.eventId));return snap.exists()?{...mapping,...snap.data(),id:mapping.eventId,linkCode:mapping.id}:null;}catch{return null;}}))).filter(Boolean);
     this.allEvents=items.sort((a,b)=>{const at=a.createdAt?.seconds||0,bt=b.createdAt?.seconds||0;return bt-at||String(b.day).localeCompare(String(a.day));});this.change();
   }
   setDay(day){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(day))throw new Error('Ngày không hợp lệ.');this.day=day;this.eventId='';this.eventName='';this.currentEvent=null;this.events=[];this.rows=[];this.photos=[];this.members=[];this.scans=0;this.duplicates=0;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day))throw new Error('Ngày không hợp lệ.');this.day=day;this.eventId='';this.shareCode='';this.eventName='';this.currentEvent=null;this.events=[];this.rows=[];this.photos=[];this.members=[];this.scans=0;this.duplicates=0;
     for(const key of ['unsubscribe','unsubscribePhotos','unsubscribeOwnPhotos','unsubscribeMembers','unsubscribeEvents']){this[key]?.();this[key]=null;}
     if(this.connected&&this.manager())this.unsubscribeEvents=this.api.onSnapshot(this.api.collection(this.db,'rooms',this.room,'days',day,'events'),snap=>{if(day!==this.day)return;this.events=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));this.change();},e=>this.error(e));
     this.change();
   }
   async loadEvent(day,eventId){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!EVENT_ID.test(eventId))throw new Error('Sự kiện không hợp lệ.');const snap=await this.api.getDocFromServer(this.api.doc(this.db,'rooms',this.room,'days',day,'events',eventId));if(!snap.exists())throw new Error('Sự kiện không tồn tại hoặc đã đóng.');
-    this.day=day;this.eventId=eventId;this.currentEvent={id:eventId,...snap.data()};this.eventName=snap.data().eventName||'Sự kiện';this.authorized=false;this.delegated=this.manager();this.memberName='';this.memberHash='';this.rows=[];this.photos=[];this.ownPhotos=[];this.scans=0;this.duplicates=0;
+    this.day=day;this.eventId=eventId;this.shareCode=eventId;this.currentEvent={id:eventId,...snap.data()};this.eventName=snap.data().eventName||'Sự kiện';this.authorized=false;this.delegated=this.manager();this.memberName='';this.memberHash='';this.rows=[];this.photos=[];this.ownPhotos=[];this.scans=0;this.duplicates=0;
+    if(this.manager()&&eventId.length===36){try{this.shareCode=await this.ensureShortLink(eventId,day);}catch(e){if(e.code!=='permission-denied')throw e;}}
     this.outbox=new Outbox(localStorage,this.config.projectId+':'+this.room+':'+eventId);this.settings={config:this.config,room:this.room,day,eventId};localStorage.setItem(SETTINGS,JSON.stringify(this.settings));
     this.subscribeActive();this.message=this.manager()?'Đã chọn sự kiện: '+this.eventName:'Nhập tên người quét để bắt đầu.';this.change();
   }
@@ -133,9 +133,9 @@ export class FirebaseAttendance {
   async flush(){if(!this.connected||!this.eventId||!navigator.onLine||!this.outbox)return;try{await this.outbox.drain(r=>this.commit(r),(record,result)=>{if(record.eventId===this.eventId){const row={...result.data,time:result.data.scannedAt,status:'Đã lưu trực tuyến'},i=this.rows.findIndex(x=>x.mssv===record.mssv);if(i<0)this.rows.push(row);else this.rows[i]=row;if(result.kind==='duplicate')this.duplicates++;this.notice(result.kind,record.mssv);}this.change();});}catch(e){this.error(e);}this.change();}
   async createEvent(name,members){
     if(!this.manager())throw new Error('Chỉ chủ sở hữu hoặc admin có thể tạo sự kiện.');name=cleanName(name);const list=uniqueMembers(members);if(!name||name.length>100)throw new Error('Tên sự kiện phải từ 1–100 ký tự.');if(list.length>200)throw new Error('Mỗi sự kiện tối đa 200 quản lý phụ.');
-    const a=this.api,eventId=crypto.randomUUID(),eventRef=a.doc(this.db,'rooms',this.room,'days',this.day,'events',eventId),batch=a.writeBatch(this.db);batch.set(eventRef,{eventName:name,day:this.day,createdByUid:this.auth.currentUser.uid,createdByEmail:(this.auth.currentUser.email||'').toLowerCase(),createdByName:cleanName(this.adminName||this.auth.currentUser.displayName)||this.auth.currentUser.email||'Không rõ',createdAt:a.serverTimestamp(),updatedAt:a.serverTimestamp()});
+    const a=this.api,eventId=await this.newShortEventId(),eventRef=a.doc(this.db,'rooms',this.room,'days',this.day,'events',eventId),batch=a.writeBatch(this.db);batch.set(eventRef,{eventName:name,day:this.day,createdByUid:this.auth.currentUser.uid,createdByEmail:(this.auth.currentUser.email||'').toLowerCase(),createdByName:cleanName(this.adminName||this.auth.currentUser.displayName)||this.auth.currentUser.email||'Không rõ',createdAt:a.serverTimestamp(),updatedAt:a.serverTimestamp()});
     for(const member of list){const normal=normalName(member),hash=await sha256(normal);batch.set(a.doc(eventRef,'members',hash),{name:member,normalized:normal,createdAt:a.serverTimestamp()});}
-    batch.set(a.doc(this.db,'publicEvents',eventId),{room:this.room,day:this.day,eventId,updatedAt:a.serverTimestamp()});await batch.commit();await this.loadEvent(this.day,eventId);await this.publishDefault();return eventId;
+    batch.set(a.doc(this.db,'publicEvents',eventId),{room:this.room,day:this.day,eventId,updatedAt:a.serverTimestamp()});await batch.commit();await this.loadEvent(this.day,eventId);return eventId;
   }
   async saveEventDetails(name,members){
     if(!this.manager()||!this.eventId)throw new Error('Chọn sự kiện trước.');name=cleanName(name);const list=uniqueMembers(members);if(!name||name.length>100||list.length>200)throw new Error('Kiểm tra tên sự kiện và danh sách quản lý phụ (tối đa 200 người).');
@@ -146,8 +146,9 @@ export class FirebaseAttendance {
     for(const member of next){const ref=a.doc(eventRef,'members',member.id),old=oldById.get(member.id);if(!old)batch.set(ref,{name:member.name,normalized:member.normalized,createdAt:a.serverTimestamp()});else if(old.name!==member.name||old.normalized!==member.normalized)batch.update(ref,{name:member.name,normalized:member.normalized});}
     batch.update(eventRef,{eventName:name,updatedAt:a.serverTimestamp()});await batch.commit();this.eventName=name;this.message='Đã lưu sự kiện và danh sách thành viên.';void this.refreshEventArchive();this.change();
   }
-  async publishDefault(){if(!this.manager()||!this.eventId)throw new Error('Chọn sự kiện trước khi kích hoạt.');await this.api.setDoc(this.api.doc(this.db,'public','default'),{room:this.room,day:this.day,eventId:this.eventId,updatedAt:this.api.serverTimestamp()});this.message='Đã kích hoạt sự kiện cho đường dẫn chính.';this.change();}
-  shareLink(){if(!this.eventId)throw new Error('Chọn sự kiện trước khi lấy liên kết.');const url=new URL(this.scannerUrl);url.searchParams.set('event',this.eventId);return url.href;}
+  async newShortEventId(){for(let attempt=0;attempt<6;attempt++){const id=Array.from(crypto.getRandomValues(new Uint8Array(5)),x=>x.toString(16).padStart(2,'0')).join('');if(!(await this.api.getDoc(this.api.doc(this.db,'rooms',this.room,'days',this.day,'events',id))).exists())return id;}throw new Error('Không tạo được mã sự kiện. Vui lòng thử lại.');}
+  async ensureShortLink(eventId,day){const code=(await sha256(eventId)).slice(0,10),a=this.api,ref=a.doc(this.db,'publicEvents',code),snap=await a.getDoc(ref);if(!snap.exists())await a.setDoc(ref,{room:this.room,day,eventId,updatedAt:a.serverTimestamp()});else if(snap.data().eventId!==eventId)throw new Error('Mã link ngắn bị trùng.');return code;}
+  shareLink(){if(!this.eventId)throw new Error('Chọn sự kiện trước khi lấy liên kết.');const url=new URL(this.scannerUrl);url.searchParams.set('e',this.shareCode||this.eventId);return url.href;}
   async uploadPhoto(imageData){
     if(!this.connected||!this.eventId||!navigator.onLine)throw new Error('Cần Internet và sự kiện đang hoạt động.');this.requireMember();if(typeof imageData!=='string'||!imageData.startsWith('data:image/jpeg;base64,')||imageData.length>450000)throw new Error('Ảnh quá lớn hoặc không hợp lệ.');
     const a=this.api,id=crypto.randomUUID(),takenAt=new Date().toISOString(),ref=a.doc(this.db,'rooms',this.room,'days',this.day,'events',this.eventId,'unread',id),data={imageData,takenAt,memberName:this.memberName,memberHash:this.memberHash,eventId:this.eventId,eventName:this.eventName,uid:this.auth.currentUser.uid,createdAt:a.serverTimestamp()};
@@ -172,9 +173,9 @@ export class FirebaseAttendance {
   async logout(){if(this.auth)await this.api.signOut(this.auth);this.owner=false;this.admin=false;this.adminName='';this.connected=false;this.message='Đã đăng xuất. Có thể đăng nhập bằng tài khoản Google khác.';this.change();}
   canDeleteCurrentEvent(){return !!this.eventId&&(this.owner||(this.admin&&this.currentEvent?.createdByUid===this.auth.currentUser.uid));}
   async deleteCurrentEvent(){
-    if(!this.canDeleteCurrentEvent())throw new Error('Admin chỉ được xóa sự kiện do chính mình tạo.');const a=this.api,active=await a.getDoc(a.doc(this.db,'public','default'));if(active.exists()&&active.data().eventId===this.eventId)throw new Error('Sự kiện đang dùng tại link chính. Hãy kích hoạt sự kiện khác trước khi xóa.');
+    if(!this.canDeleteCurrentEvent())throw new Error('Admin chỉ được xóa sự kiện do chính mình tạo.');const a=this.api;
     const eventRef=a.doc(this.db,'rooms',this.room,'days',this.day,'events',this.eventId);for(const sub of ['attendance','unread','members','access']){const snap=await a.getDocs(a.collection(eventRef,sub));for(let i=0;i<snap.docs.length;i+=400){const batch=a.writeBatch(this.db);snap.docs.slice(i,i+400).forEach(d=>batch.delete(d.ref));await batch.commit();}}
-    await a.deleteDoc(a.doc(this.db,'publicEvents',this.eventId));await a.deleteDoc(eventRef);this.message='Đã xóa sự kiện.';this.setDay(this.day);
+    const mappings=await a.getDocs(a.query(a.collection(this.db,'publicEvents'),a.where('room','==',this.room)));for(const mapping of mappings.docs)if(mapping.data().eventId===this.eventId)await a.deleteDoc(mapping.ref);await a.deleteDoc(eventRef);this.message='Đã xóa sự kiện.';this.setDay(this.day);
   }
   error(e){const codes={'permission-denied':'Chưa được cấp quyền hoặc tên không còn trong sự kiện.','auth/operation-not-allowed':'Bật Google và Anonymous trong Firebase Authentication.','auth/unauthorized-domain':'Thêm tranquanghai-ops.github.io vào Authorized domains.','auth/popup-blocked':'Trình duyệt chặn cửa sổ đăng nhập.','resource-exhausted':'Đã chạm hạn mức Firebase.','unavailable':'Chưa liên lạc được Firebase.'};this.message=codes[e.code]||e.message||'Không kết nối được Firebase.';this.change();}
   disconnect(){localStorage.removeItem(SETTINGS);location.replace(location.origin+location.pathname);}

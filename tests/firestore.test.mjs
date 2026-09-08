@@ -61,14 +61,13 @@ test('only owner can name a day; participants can read the name',async()=>{
  await assertFails(setDoc(dayRef,{eventName:'',updatedAt:serverTimestamp()}));
  await assertFails(setDoc(dayRef,{eventName:'x'.repeat(101),updatedAt:serverTimestamp()}));
 });
-test('owner can publish the default scanner room; anonymous users can only read it',async()=>{
+test('root scanner mapping is disabled; only event links can be published',async()=>{
  const eventRef=doc(owner,'rooms',room,'days',day,'events',eventId);
  await assertSucceeds(setDoc(eventRef,{eventName:'Ca sáng',day,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
  const ownerDefault=doc(owner,'public','default');
- await assertSucceeds(setDoc(ownerDefault,{room,day,eventId,updatedAt:serverTimestamp()}));
- assert.equal((await getDoc(doc(a,'public','default'))).data().room,room);
+ await assertFails(setDoc(ownerDefault,{room,day,eventId,updatedAt:serverTimestamp()}));
+ await assertFails(getDoc(doc(a,'public','default')));
  await assertFails(setDoc(doc(a,'public','default'),{room,day,eventId,updatedAt:serverTimestamp()}));
- await assertFails(setDoc(ownerDefault,{room:'b'.repeat(48),day,eventId,updatedAt:serverTimestamp()}));
 });
 
 test('event link permits scanning while the member list grants delegated management',async()=>{
@@ -104,6 +103,8 @@ test('event link permits scanning while the member list grants delegated managem
  await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',event2,'attendance')));
  await assertSucceeds(setDoc(doc(owner,'publicEvents',eventId),{room,day,eventId,updatedAt:serverTimestamp()}));
  assert.equal((await getDoc(doc(b,'publicEvents',eventId))).data().eventId,eventId);
+ const shortCode='abc123def4';await assertSucceeds(setDoc(doc(owner,'publicEvents',shortCode),{room,day,eventId,updatedAt:serverTimestamp()}));
+ assert.equal((await getDoc(doc(b,'publicEvents',shortCode))).data().eventId,eventId);
 });
 
 test('event photo is visible only to its uploader and owner',async()=>{
@@ -150,7 +151,7 @@ test('owner manages admins; admin operates events but only deletes own events',a
  const found=await assertSucceeds(getDocs(query(collectionGroup(admin,'admins'),where('email','==',email))));assert.equal(found.size,1);
  await assertFails(setDoc(doc(admin,'rooms',room,'admins','other@example.com'),{email:'other@example.com',name:'Khác',addedByUid:'adminUid',addedAt:serverTimestamp()}));
  await assertFails(deleteDoc(doc(admin,'rooms',room,'admins',email)));
- const ownEvent='55555555-5555-4555-8555-555555555555',ownerEvent='66666666-6666-4666-8666-666666666666';
+ const ownEvent='5555555555',ownerEvent='66666666-6666-4666-8666-666666666666';
  const ownRef=doc(admin,'rooms',room,'days',day,'events',ownEvent),ownerRef=doc(owner,'rooms',room,'days',day,'events',ownerEvent);
  await assertSucceeds(setDoc(ownRef,{eventName:'Sự kiện admin',day,createdByUid:'adminUid',createdByEmail:email,createdByName:'Quản trị viên',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
  await assertSucceeds(setDoc(ownerRef,{eventName:'Sự kiện GV',day,createdByUid:'teacher',createdByEmail:'teacher@example.com',createdByName:'Trần Quang Hải',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
