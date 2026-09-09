@@ -1,6 +1,6 @@
-# Kết nối Firebase cho Điểm danh V1.3
+# Kết nối Firebase cho Điểm danh V1.4
 
-Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sau đó SV chỉ cần mở `https://tranquanghai-ops.github.io/diem-danh/` để quét, không cần tài khoản Firebase. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
+Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sinh viên quét bằng liên kết riêng của sự kiện; trang chính dùng để tra cứu lịch sử điểm danh bằng email trường. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
 ## 1. Tạo dự án miễn phí
 
@@ -32,12 +32,12 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.3.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.4.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.3**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.4**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Không cần dán lại `firebaseConfig`.
 - Chọn ngày, nhấn **Tạo sự kiện**, nhập tên sự kiện và danh sách thành viên, mỗi dòng một họ tên.
 - Nút **Sao chép link sự kiện** tạo liên kết riêng ngắn gọn để gửi sinh viên. Trang chính `https://tranquanghai-ops.github.io/diem-danh/` không cho phép quét.
@@ -66,6 +66,15 @@ tranquanghai-ops.github.io
 - Trước khi bàn giao điện thoại, kiểm tra **0 lượt chờ gửi**. Đừng xóa dữ liệu trình duyệt khi còn lượt chờ.
 - **Excel/CSV/JSON** xuất sự kiện đang chọn. Tên tệp gồm tên sự kiện và ngày.
 - Người quản lý có thể xóa từng lượt quét sai hoặc xóa toàn bộ lượt điểm danh của sự kiện đang chọn.
+
+## Danh sách sinh viên dùng chung và trang tra cứu
+
+- Chủ sở hữu hoặc Admin cấp cao mở **Danh sách sinh viên dùng chung** trên trang quản lý để nhập Excel/CSV, thêm hoặc cập nhật thủ công, xóa từng sinh viên và xuất lại Excel.
+- Tệp nhập cần có cột `Mã SV` hoặc `MSSV`; tên có thể nằm trong cột `Họ tên`, hoặc tách thành `Họ lót` và `Tên`. Nhập lại tệp chỉ bổ sung/cập nhật, không tự xóa danh sách cũ.
+- Khi quét, ứng dụng đối chiếu MSSV với danh sách này và hiển thị họ tên. MSSV ngoài danh sách hiện **Không có dữ liệu tên**.
+- Mỗi sinh viên trong danh sách được ánh xạ tới email `mssv@student.tdtu.edu.vn`. Sinh viên mở [trang tra cứu](https://tranquanghai-ops.github.io/diem-danh/), đăng nhập đúng email trường và chỉ xem được lịch sử của chính mình.
+- Chủ sở hữu và Admin cấp cao mở cùng trang tra cứu sẽ có ô nhập MSSV để xem thử đúng giao diện sinh viên. Sub Admin không có quyền này.
+- Sau khi thay `firestore.rules`, bắt buộc nhấn **Publish** trong Firebase Console trước khi dùng tính năng danh sách và tra cứu mới.
 
 ## Lưu lượng
 

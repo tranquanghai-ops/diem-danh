@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V1.3</title>
+  <title>Tra cứu và điểm danh sinh viên V1.4</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -74,20 +74,29 @@
     .list-card,.settings{margin-top:12px}
     .card h2{margin:0;font-size:16px}
     .table-wrap{max-height:320px}table{min-width:610px;width:100%;font-size:12px}th,td{padding:10px 6px}
-    .attendance-table{min-width:480px;table-layout:fixed}.attendance-table .stt-col{width:42px}.attendance-table .mssv-col{width:100px}.attendance-table .scanner-col{width:92px}.attendance-table .delete-col{width:58px}.attendance-table .time-col{width:132px}.attendance-table .status-col{width:105px}.attendance-table .delete-col button{padding:7px 9px}.attendance-table .time-col{font-size:11px;white-space:normal}
+    .attendance-table{min-width:650px;table-layout:fixed}.attendance-table .stt-col{width:42px}.attendance-table .mssv-col{width:100px}.attendance-table .student-col{width:165px}.attendance-table .scanner-col{width:92px}.attendance-table .delete-col{width:58px}.attendance-table .time-col{width:132px}.attendance-table .status-col{width:105px}.attendance-table .delete-col button{padding:7px 9px}.attendance-table .time-col{font-size:11px;white-space:normal}
     .settings summary{cursor:pointer;font-size:14px;font-weight:650}
     .scan-toast{position:fixed;z-index:9999;left:50%;top:max(12px,env(safe-area-inset-top));transform:translate(-50%,-18px);width:min(92vw,430px);padding:14px 16px;border-radius:14px;color:#fff;background:#166534;box-shadow:0 14px 40px #0f172a55;opacity:0;pointer-events:none;transition:.18s}.scan-toast.show{opacity:1;transform:translate(-50%,0)}.scan-toast.warn{background:#9a3412}.scan-toast.error{background:#991b1b}.scan-toast b{display:block;font-size:17px}.scan-toast span{font-size:15px}
     .settings[open] summary{margin-bottom:16px}
     .scanner-name{margin-bottom:12px}.scanner-name input{font-size:16px;font-weight:650}
     footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.6;padding:22px 8px 2px}
     @media(max-width:520px){.status-col{display:none}.status{top:6px}.buttons{gap:6px}}
-    body.no-event .scanner-name,body.no-event #status,body.no-event .scanner-card,body.no-event .list-card,body.no-event .settings{display:none!important}.link-required{text-align:center;padding:28px 18px}.link-required h2{font-size:22px;margin-bottom:10px}.link-required p{color:var(--muted);line-height:1.6;margin:0}
+    body.portal-mode .scanner-name,body.portal-mode #status,body.portal-mode .scanner-card,body.portal-mode .list-card,body.portal-mode .settings{display:none!important}.portal-card{padding:22px}.portal-head{text-align:center}.portal-head h1{font-size:25px}.portal-login{display:flex;justify-content:center;margin:18px 0}.portal-login button{font-size:17px;padding:13px 24px;min-width:245px}.portal-profile{padding:12px 14px;background:#eef2ff;border-radius:12px;margin:12px 0}.history-grid{display:grid;gap:10px;margin-top:14px}.history-item{border:1px solid var(--line);border-left:5px solid var(--success);border-radius:14px;padding:14px;background:#fff}.history-item h3{margin:0 0 7px;font-size:17px}.history-item p{margin:3px 0;color:var(--muted);font-size:13px}.portal-empty{text-align:center;padding:24px;color:var(--muted)}
   </style>
 </head>
 <body>
 <div id="scanToast" class="scan-toast" role="alert" aria-live="assertive"><b></b><span></span></div>
 <div class="app">
-  <section id="linkRequired" class="card link-required" hidden><h2>Cần liên kết sự kiện</h2><p>Trang chính không dùng để quét điểm danh.<br>Vui lòng mở đúng liên kết sự kiện do giảng viên gửi.</p></section>
+  <section id="studentPortal" class="card portal-card" hidden>
+    <div class="portal-head"><h1>Tra cứu lịch sử điểm danh</h1><p class="note">Sinh viên đăng nhập bằng email <b>MSSV@student.tdtu.edu.vn</b>. Hệ thống tự nhận MSSV từ email trường.</p></div>
+    <div id="portalStatus" class="status">Đang kiểm tra đăng nhập…</div>
+    <div class="portal-login"><button id="portalLoginBtn" class="primary">Đăng nhập email sinh viên</button></div>
+    <div id="portalSignedIn" hidden>
+      <div class="row between"><div id="portalProfile" class="portal-profile" style="flex:1"></div><button id="portalLogoutBtn" class="danger">Đăng xuất</button></div>
+      <div id="portalAdminLookup" hidden><label for="portalMssv">Xem thử giao diện của sinh viên</label><div class="row"><input id="portalMssv" maxlength="12" autocapitalize="characters" placeholder="Nhập MSSV" style="flex:1"><button id="portalLookupBtn" class="primary">Tra cứu</button></div></div>
+      <div id="historyGrid" class="history-grid"></div><div id="historyEmpty" class="portal-empty">Chưa có sự kiện điểm danh.</div>
+    </div>
+  </section>
   <section class="card scanner-name">
     <div id="eventInfo" class="note">Đang tải sự kiện…</div>
     <label for="scannerName">Tên người quét</label>
@@ -123,7 +132,7 @@
     <div class="row between"><h2 id="attendanceTitle">Danh sách điểm danh</h2><button class="success" id="excelBtn">↓ Excel</button></div>
     <div class="table-wrap">
       <table class="attendance-table">
-        <thead><tr><th class="stt-col">STT</th><th class="mssv-col">MSSV</th><th class="scanner-col">Người quét</th><th class="delete-col">Xóa</th><th class="time-col">Ngày quét</th><th class="status-col">Trạng thái</th></tr></thead>
+        <thead><tr><th class="stt-col">STT</th><th class="mssv-col">MSSV</th><th class="student-col">Họ tên</th><th class="scanner-col">Người quét</th><th class="delete-col">Xóa</th><th class="time-col">Ngày quét</th><th class="status-col">Trạng thái</th></tr></thead>
         <tbody id="attendanceBody"></tbody>
       </table>
       <div id="emptyTable" class="empty">Chưa có sinh viên điểm danh.</div>
@@ -144,7 +153,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V1.3</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V1.4</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -282,7 +291,8 @@
       const code=r.kind==='photo'?(validStudentId(r.mssv)?'<b>'+escapeHtml(r.mssv)+'</b><br>':'')+'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Xem hình</button>':r.photoId&&r.imageData?'<button class="photo-link" data-view-photo="'+escapeHtml(r.photoId)+'"><b>'+escapeHtml(r.mssv)+'</b> 🖼️</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
       const canManage=window.attendanceCloud?.owner||window.attendanceCloud?.delegated;
       const remove=r.kind==='scan'&&canManage?'<button class="danger" data-delete-scan="'+escapeHtml(r.mssv)+'">Xóa</button>':'—';
-      tr.innerHTML = '<td class="stt-col">'+(rows.length-i)+'</td><td class="mssv-col">'+code+'</td><td class="scanner-col">'+escapeHtml(r.memberName||r.scannerName||'Không rõ')+'</td><td class="delete-col">'+remove+'</td><td class="time-col">'+escapeHtml(fmtTime(r.time))+'</td><td class="status-col"><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
+      const studentName=window.attendanceCloud?.displayStudentName(r.mssv,r.studentName)||r.studentName||'Không có dữ liệu tên';
+      tr.innerHTML = '<td class="stt-col">'+(rows.length-i)+'</td><td class="mssv-col">'+code+'</td><td class="student-col">'+escapeHtml(studentName)+'</td><td class="scanner-col">'+escapeHtml(r.memberName||r.scannerName||'Không rõ')+'</td><td class="delete-col">'+remove+'</td><td class="time-col">'+escapeHtml(fmtTime(r.time))+'</td><td class="status-col"><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
       body.appendChild(tr);
     });
     $('excelBtn').hidden=!!window.attendanceCloud?.enabled&&!(window.attendanceCloud.owner||window.attendanceCloud.delegated);
@@ -588,7 +598,7 @@
 
   function rowsForExport(){
     const b=currentBatch();
-    return (b?.attendance||[]).filter(r=>r.kind!=='photo'||validStudentId(r.mssv)).sort((a,b)=>a.mssv.localeCompare(b.mssv,undefined,{numeric:true})).map((r,i)=>({STT:i+1,MSSV:r.mssv,'Sự kiện':r.eventName||window.attendanceCloud?.eventName||'','Thành viên quét':r.memberName||r.scannerName||'Không ghi nhận','Thời gian':fmtTime(r.time)}));
+    return (b?.attendance||[]).filter(r=>r.kind!=='photo'||validStudentId(r.mssv)).sort((a,b)=>a.mssv.localeCompare(b.mssv,undefined,{numeric:true})).map((r,i)=>({STT:i+1,MSSV:r.mssv,'Họ tên':window.attendanceCloud?.displayStudentName(r.mssv,r.studentName)||r.studentName||'Không có dữ liệu tên','Sự kiện':r.eventName||window.attendanceCloud?.eventName||'','Thành viên quét':r.memberName||r.scannerName||'Không ghi nhận','Thời gian':fmtTime(r.time)}));
   }
   function safeFilename(value){
     return String(value||'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,80)||'diem_danh';
@@ -596,7 +606,7 @@
   $('excelBtn').onclick=()=>{
     if(!window.XLSX){alert('Không tải được thư viện Excel. Kiểm tra Internet rồi thử lại.');return;}
     const ws=XLSX.utils.json_to_sheet(rowsForExport());
-    ws['!cols']=[{wch:7},{wch:18},{wch:35},{wch:28},{wch:22}];
+    ws['!cols']=[{wch:7},{wch:18},{wch:32},{wch:35},{wch:28},{wch:22}];
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Diem danh');
     const cloud=window.attendanceCloud;
     const day=cloud?.enabled?cloud.day:new Date().toLocaleDateString('sv-SE');
@@ -612,6 +622,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=1.3"></script>
+<script type="module" src="./cloud-ui.mjs?v=1.4"></script>
 </body>
 </html>

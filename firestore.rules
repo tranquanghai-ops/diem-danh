@@ -8,6 +8,9 @@ service cloud.firestore {
   function admin(r){return google()&&request.auth.token.email is string&&exists(ap(r));}
   function senior(r){return owner(r)||(admin(r)&&get(ap(r)).data.role=='senior');}
   function manageSubs(r){return owner(r)||(senior(r)&&get(ap(r)).data.canManageSubAdmins==true);}
+  function student(){return google()&&request.auth.token.email is string&&request.auth.token.email_verified==true&&request.auth.token.email.matches('^[A-Za-z0-9]+@student\\.tdtu\\.edu\\.vn$');}
+  function sap(){return /databases/$(database)/documents/studentAccess/$(request.auth.token.email);}
+  function ownStudent(mssv){return student()&&exists(sap())&&get(sap()).data.mssv==mssv;}
   function vr(r){return r.matches('^[a-f0-9]{48}$');}
   function vd(d){return d.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');}
   function ve(e){return e.matches('^([a-f0-9]{10}|[a-f0-9-]{36})$');}
@@ -18,6 +21,13 @@ service cloud.firestore {
    allow create:if google()&&valid()&&(owner(request.resource.data.room)||(manageSubs(request.resource.data.room)&&request.resource.data.role=='sub'));
    allow update:if google()&&valid()&&owner(resource.data.room)&&owner(request.resource.data.room);
    allow delete:if google()&&(owner(resource.data.room)||(manageSubs(resource.data.room)&&resource.data.role=='sub'));
+  }
+  match /studentAccess/{email}{
+   function valid(){return request.resource.data.keys().hasAll(['email','mssv','name','room','updatedByUid','updatedAt'])&&request.resource.data.keys().hasOnly(['email','mssv','name','room','updatedByUid','updatedAt'])&&request.resource.data.email==email&&email.matches('^[a-z0-9]+@student\\.tdtu\\.edu\\.vn$')&&request.resource.data.mssv.matches('^[A-Za-z0-9]{8,12}$')&&request.resource.data.mssv.matches('.*[0-9].*')&&request.resource.data.name is string&&request.resource.data.name.size()>0&&request.resource.data.name.size()<=150&&vr(request.resource.data.room)&&request.resource.data.updatedByUid==request.auth.uid&&request.resource.data.updatedAt==request.time;}
+   allow get:if google()&&request.auth.token.email==email;allow list:if false;
+   allow create:if google()&&valid()&&senior(request.resource.data.room);
+   allow update:if google()&&valid()&&senior(resource.data.room)&&senior(request.resource.data.room);
+   allow delete:if google()&&senior(resource.data.room);
   }
   match /publicEvents/{code}{
    function valid(){return ve(code)&&request.resource.data.keys().hasAll(['room','day','eventId','createdByUid','updatedAt'])&&request.resource.data.keys().hasOnly(['room','day','eventId','createdByUid','updatedAt'])&&vr(request.resource.data.room)&&vd(request.resource.data.day)&&ve(request.resource.data.eventId)&&request.resource.data.updatedAt==request.time;}
@@ -35,6 +45,11 @@ service cloud.firestore {
     function valid(){return request.resource.data.keys().hasAll(['email','name','role','canManageSubAdmins','addedByUid','addedAt'])&&request.resource.data.keys().hasOnly(['email','name','role','canManageSubAdmins','addedByUid','addedAt'])&&request.resource.data.email==email&&request.resource.data.name is string&&request.resource.data.name.size()<=100&&request.resource.data.role in ['senior','sub']&&request.resource.data.canManageSubAdmins is bool&&(request.resource.data.role=='senior'||request.resource.data.canManageSubAdmins==false)&&request.resource.data.addedByUid==request.auth.uid&&request.resource.data.addedAt==request.time;}
     allow get:if owner(room)||(google()&&request.auth.token.email==email);allow list:if owner(room)||(manageSubs(room)&&resource.data.role=='sub');
     allow create:if google()&&valid()&&(owner(room)||(manageSubs(room)&&request.resource.data.role=='sub'));allow update:if google()&&valid()&&owner(room);allow delete:if google()&&(owner(room)||(manageSubs(room)&&resource.data.role=='sub'));
+   }
+   match /students/{mssv}{
+    function valid(){return request.resource.data.keys().hasAll(['mssv','name','updatedByUid','updatedAt'])&&request.resource.data.keys().hasOnly(['mssv','name','updatedByUid','updatedAt'])&&request.resource.data.mssv==mssv&&mssv.matches('^[A-Za-z0-9]{8,12}$')&&mssv.matches('.*[0-9].*')&&request.resource.data.name is string&&request.resource.data.name.size()>0&&request.resource.data.name.size()<=150&&request.resource.data.updatedByUid==request.auth.uid&&request.resource.data.updatedAt==request.time;}
+    allow get:if signedIn();allow list:if senior(room);
+    allow create,update:if google()&&senior(room)&&valid();allow delete:if google()&&senior(room);
    }
    match /days/{day}/events/{eventId}{
     function validEvent(){return signedIn()&&vr(room)&&vd(day)&&ve(eventId)&&exists(/databases/$(database)/documents/rooms/$(room));}
@@ -62,8 +77,8 @@ service cloud.firestore {
      function scanner(){return request.resource.data.memberHash.matches('^[a-f0-9]{64}$')&&request.resource.data.memberName is string&&request.resource.data.memberName.size()>=2&&request.resource.data.memberName.size()<=100;}
      function pp(){return /databases/$(database)/documents/rooms/$(room)/days/$(day)/events/$(eventId)/unread/$(request.resource.data.photoId);}
      function photo(){return request.resource.data.source=='photo'&&request.resource.data.keys().hasAll(['photoId'])&&request.resource.data.photoId.matches('^[a-f0-9-]{36}$')&&request.resource.data.uid==get(pp()).data.uid&&request.resource.data.memberName==get(pp()).data.memberName&&request.resource.data.memberHash==get(pp()).data.memberHash&&request.resource.data.scannedAt==get(pp()).data.takenAt&&request.resource.data.requestId==request.resource.data.photoId&&getAfter(pp()).data.mssv==mssv;}
-     allow get:if validEvent();allow list:if validEvent()&&manager();
-     allow create:if validEvent()&&open()&&mssv.matches('^[A-Za-z0-9]{8,12}$')&&request.resource.data.keys().hasAll(['mssv','scannedAt','source','memberName','memberHash','eventId','eventName','requestId','uid','createdAt'])&&request.resource.data.keys().hasOnly(['mssv','scannedAt','source','photoId','memberName','memberHash','eventId','eventName','requestId','uid','createdAt'])&&request.resource.data.mssv==mssv&&request.resource.data.eventId==eventId&&request.resource.data.eventName==ev().data.eventName&&scanner()&&request.resource.data.requestId is string&&request.resource.data.requestId.size()==36&&request.resource.data.scannedAt is string&&request.resource.data.scannedAt.size()<=32&&((request.resource.data.source in ['camera','manual']&&request.resource.data.uid==request.auth.uid)||photo())&&request.resource.data.createdAt==request.time;
+     allow get:if (validEvent()&&!student())||ownStudent(mssv);allow list:if (validEvent()&&manager())||ownStudent(mssv);
+     allow create:if validEvent()&&open()&&mssv.matches('^[A-Za-z0-9]{8,12}$')&&request.resource.data.keys().hasAll(['mssv','studentName','room','day','scannedAt','source','memberName','memberHash','eventId','eventName','requestId','uid','createdAt'])&&request.resource.data.keys().hasOnly(['mssv','studentName','room','day','scannedAt','source','photoId','memberName','memberHash','eventId','eventName','requestId','uid','createdAt'])&&request.resource.data.mssv==mssv&&request.resource.data.room==room&&request.resource.data.day==day&&request.resource.data.studentName is string&&request.resource.data.studentName.size()<=150&&((!exists(/databases/$(database)/documents/rooms/$(room)/students/$(mssv))&&request.resource.data.studentName=='')||(exists(/databases/$(database)/documents/rooms/$(room)/students/$(mssv))&&request.resource.data.studentName==get(/databases/$(database)/documents/rooms/$(room)/students/$(mssv)).data.name))&&request.resource.data.eventId==eventId&&request.resource.data.eventName==ev().data.eventName&&scanner()&&request.resource.data.requestId is string&&request.resource.data.requestId.size()==36&&request.resource.data.scannedAt is string&&request.resource.data.scannedAt.size()<=32&&((request.resource.data.source in ['camera','manual']&&request.resource.data.uid==request.auth.uid)||photo())&&request.resource.data.createdAt==request.time;
      allow update:if false;allow delete:if validEvent()&&manager();
     }
     match /unread/{photoId}{
@@ -78,6 +93,9 @@ service cloud.firestore {
      allow delete:if validEvent()&&staff();
     }
    }
+  }
+  match /{path=**}/attendance/{document}{
+   allow get,list:if student()&&exists(sap())&&resource.data.mssv==get(sap()).data.mssv;
   }
  }
 }
