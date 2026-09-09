@@ -5,7 +5,7 @@ import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 const $=id=>document.getElementById(id);
 const cloud=new FirebaseAttendance({scannerUrl:'../',change:render});
 window.attendanceCloud=cloud;
-let editing=false,viewerScale=1,newRoster=[];
+let editing=false,viewerScale=1,newRoster=[],studentPage=1;
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const time=v=>{try{return new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium'}).format(v?.toDate?v.toDate():new Date(v));}catch{return v||'';}};
@@ -16,11 +16,19 @@ const eventTime=e=>e.startTime&&e.endTime?`${e.startTime}–${e.endTime}`:e.star
 
 function roleText(a){return a.role==='senior'?'Admin cấp cao'+(a.canManageSubAdmins?' • được quản lý Sub Admin':''):'Sub Admin';}
 
+function updateStudentFilter(id,values,label){const select=$(id),current=select.value,options=[`<option value="">${label}</option>`,...values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`)].join('');if(select.innerHTML!==options)select.innerHTML=options;if(values.includes(current))select.value=current;}
 function renderStudents(){
-  const q=String($('studentSearch').value||'').trim().toLocaleLowerCase('vi-VN'),all=cloud.students||[];
-  const rows=q?all.filter(x=>[x.mssv,x.name,x.gender,x.major,x.studentClass].some(v=>String(v||'').toLocaleLowerCase('vi-VN').includes(q))):all;
-  $('studentCount').textContent=all.length+' sinh viên';$('studentEmpty').hidden=!!rows.length;
+  const all=cloud.students||[],sort=(a,b)=>a.localeCompare(b,'vi',{numeric:true});
+  updateStudentFilter('studentMajorFilter',[...new Set(all.map(x=>x.major).filter(Boolean))].sort(sort),'Chọn ngành');
+  const major=$('studentMajorFilter').value;
+  updateStudentFilter('studentClassFilter',[...new Set(all.filter(x=>!major||x.major===major).map(x=>x.studentClass).filter(Boolean))].sort(sort),'Chọn lớp');
+  const studentClass=$('studentClassFilter').value,q=String($('studentSearch').value||'').trim().toLocaleLowerCase('vi-VN'),active=!!(q||major||studentClass);
+  let filtered=active?all.filter(x=>(!major||x.major===major)&&(!studentClass||x.studentClass===studentClass)&&(!q||[x.mssv,x.name].some(v=>String(v||'').toLocaleLowerCase('vi-VN').includes(q)))):[];
+  const pageSize=[15,30,50,100].includes(Number($('studentPageSize').value))?Number($('studentPageSize').value):15,totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));studentPage=Math.min(Math.max(1,studentPage),totalPages);
+  const rows=filtered.slice((studentPage-1)*pageSize,studentPage*pageSize);
+  $('studentCount').textContent=all.length+' sinh viên';$('studentPrompt').hidden=active;$('studentTableWrap').hidden=!active;$('studentEmpty').hidden=!!filtered.length;
   $('studentRows').innerHTML=rows.map(x=>`<tr><td><b>${esc(x.mssv)}</b></td><td>${esc(x.name)}</td><td>${esc(x.gender||'—')}</td><td>${esc(x.major||'—')}</td><td>${esc(x.studentClass||'—')}</td><td><button class="danger" data-remove-student="${esc(x.mssv)}">Xóa</button></td></tr>`).join('');
+  $('studentPagination').hidden=!active||filtered.length<=pageSize;$('studentPageInfo').textContent=`Trang ${studentPage}/${totalPages} • ${filtered.length} sinh viên`;$('studentPrevPage').disabled=studentPage<=1;$('studentNextPage').disabled=studentPage>=totalPages;
 }
 
 function renderRoster(){
@@ -100,7 +108,10 @@ function parseStudents(data){
 $('rosterFile').onchange=async()=>{const file=$('rosterFile').files[0];if(!file)return;await action(async()=>{const rows=parseStudents(await file.arrayBuffer());if(!confirm(`Tìm thấy ${rows.length} sinh viên. Thay danh sách đăng ký hiện tại?`))return;await cloud.replaceRoster(rows);})();$('rosterFile').value='';};
 $('studentFile').onchange=async()=>{const file=$('studentFile').files[0];if(!file)return;await action(async()=>{const rows=parseStudents(await file.arrayBuffer());if(!confirm(`Tìm thấy ${rows.length} sinh viên. Dữ liệu mới sẽ được bổ sung hoặc cập nhật, không xóa danh sách hiện có.`))return;await cloud.mergeStudents(rows);})();$('studentFile').value='';};
 $('addStudentBtn').onclick=action(async()=>{await cloud.mergeStudents([{mssv:$('studentMssv').value,name:$('studentName').value,gender:$('studentGender').value,major:$('studentMajor').value,studentClass:$('studentClass').value}]);for(const id of ['studentMssv','studentName','studentGender','studentMajor','studentClass'])$(id).value='';});
-$('studentSearch').oninput=renderStudents;
+$('studentSearch').oninput=()=>{studentPage=1;renderStudents();};
+$('studentMajorFilter').onchange=()=>{studentPage=1;renderStudents();};$('studentClassFilter').onchange=()=>{studentPage=1;renderStudents();};$('studentPageSize').onchange=()=>{studentPage=1;renderStudents();};
+$('resetStudentFilters').onclick=()=>{$('studentSearch').value='';$('studentMajorFilter').value='';$('studentClassFilter').value='';studentPage=1;renderStudents();};
+$('studentPrevPage').onclick=()=>{if(studentPage>1){studentPage--;renderStudents();}};$('studentNextPage').onclick=()=>{studentPage++;renderStudents();};
 $('studentRows').onclick=async e=>{const b=e.target.closest('[data-remove-student]');if(b&&confirm('Xóa sinh viên '+b.dataset.removeStudent+' khỏi danh sách SV khoa?'))await action(()=>cloud.removeStudent(b.dataset.removeStudent))();};
 $('exportStudentsBtn').onclick=()=>{const rows=(cloud.students||[]).map((x,i)=>({STT:i+1,'Mã SV':x.mssv,'Họ và tên':x.name,'Giới tính':x.gender||'','Ngành':x.major||'','Lớp':x.studentClass||''})),ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();ws['!cols']=[{wch:7},{wch:16},{wch:34},{wch:12},{wch:28},{wch:18}];XLSX.utils.book_append_sheet(wb,ws,'Danh sach SV khoa');XLSX.writeFile(wb,'DSSV_KHOA_'+vietnamDay()+'.xlsx');};
 
