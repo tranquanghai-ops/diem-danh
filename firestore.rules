@@ -58,7 +58,12 @@ service cloud.firestore {
    }
    match /studentDirectory/{document}{
     allow read:if senior(room);
-    allow create,update:if google()&&senior(room)&&request.resource.data.keys().hasAll(['records','count','updatedByUid','updatedAt'])&&request.resource.data.keys().hasOnly(['records','count','updatedByUid','updatedAt'])&&request.resource.data.records is list&&request.resource.data.count is int&&request.resource.data.count==request.resource.data.records.size()&&request.resource.data.updatedByUid==request.auth.uid&&request.resource.data.updatedAt==request.time;
+    allow create,update:if google()&&senior(room)&&request.resource.data.keys().hasAll(['groups','count','updatedByUid','updatedAt'])&&request.resource.data.keys().hasOnly(['groups','count','updatedByUid','updatedAt'])&&request.resource.data.groups is list&&request.resource.data.count is int&&request.resource.data.count>=0&&request.resource.data.updatedByUid==request.auth.uid&&request.resource.data.updatedAt==request.time;
+    allow delete:if google()&&senior(room);
+   }
+   match /studentGroups/{document}{
+    allow read:if senior(room);
+    allow create,update:if google()&&senior(room)&&request.resource.data.keys().hasAll(['records','type','label','major','part','updatedByUid','updatedAt'])&&request.resource.data.keys().hasOnly(['records','type','label','major','part','updatedByUid','updatedAt'])&&request.resource.data.records is list&&request.resource.data.type in ['all','major','class']&&request.resource.data.label is string&&request.resource.data.major is string&&request.resource.data.part is int&&request.resource.data.part>=0&&request.resource.data.updatedByUid==request.auth.uid&&request.resource.data.updatedAt==request.time;
     allow delete:if google()&&senior(room);
    }
    match /days/{day}/events/{eventId}{
