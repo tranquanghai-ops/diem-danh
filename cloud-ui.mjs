@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from './firebase-sync.mjs?v=1.5';
+import {FirebaseAttendance} from './firebase-sync.mjs?v=1.5.2';
 import {DEFAULT_FIREBASE_CONFIG} from './firebase-config.mjs';
 const $=id=>document.getElementById(id),ui=window.attendanceUI;
 const SCANNER_NAME_KEY='attendance_scanner_name_v1';

@@ -1,4 +1,4 @@
-# Kết nối Firebase cho Điểm danh V1.5.1
+# Kết nối Firebase cho Điểm danh V1.5.2
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sinh viên quét bằng liên kết riêng của sự kiện; trang chính dùng để tra cứu lịch sử điểm danh bằng email trường. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -32,12 +32,12 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.5.1.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.5.2.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.5.1**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.5.2**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Không cần dán lại `firebaseConfig`.
 - Mở tab **Tạo sự kiện**, nhập tên, ngày tổ chức; địa điểm và giờ có thể để trống để bổ sung sau. Có thể chọn luôn Excel/CSV danh sách sinh viên đã đăng ký trước sự kiện.
 - Nút **Sao chép link sự kiện** tạo liên kết theo tên, ví dụ `?e=SINH-HOAT-CONG-DAN`, để gửi sinh viên. Nếu trùng tên, hệ thống tự thêm `-2`, `-3`… Trang chính `https://tranquanghai-ops.github.io/diem-danh/` không cho phép quét.
@@ -71,6 +71,7 @@ tranquanghai-ops.github.io
 ## Danh sách SV khoa và trang tra cứu
 
 - Chủ sở hữu hoặc Admin cấp cao mở **Danh sách SV khoa** trên trang quản lý để nhập Excel/CSV, thêm hoặc cập nhật MSSV, họ tên, giới tính, ngành, lớp; xóa từng sinh viên và xuất lại Excel.
+- V1.5.2 tự tạo một danh mục tối ưu dành riêng cho Admin. Lần đầu sau khi Publish quy tắc mới, hệ thống đọc dữ liệu cũ một lần để chuyển đổi; những lần đăng nhập sau chỉ cần đọc một tài liệu thay vì tải hàng nghìn hồ sơ riêng lẻ.
 - Tệp nhập cần có cột `Mã SV` hoặc `MSSV`; tên có thể nằm trong cột `Họ tên`, hoặc tách thành `Họ lót` và `Tên`. Các cột `Giới tính`, `Ngành`, `Lớp` được lưu để Admin quản lý nhưng không hiển thị trong danh sách điểm danh. Nhập lại tệp chỉ bổ sung/cập nhật, không tự xóa danh sách cũ.
 - Khi quét, ứng dụng đối chiếu MSSV với danh sách này và hiển thị họ tên. MSSV ngoài danh sách hiện **Không có dữ liệu tên**.
 - Mỗi sinh viên trong danh sách được ánh xạ tới email `mssv@student.tdtu.edu.vn`. Sinh viên mở [trang tra cứu](https://tranquanghai-ops.github.io/diem-danh/), đăng nhập đúng email trường và chỉ xem được lịch sử của chính mình.
