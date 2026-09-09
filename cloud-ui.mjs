@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from './firebase-sync.mjs?v=1.4';
+import {FirebaseAttendance} from './firebase-sync.mjs?v=1.5';
 import {DEFAULT_FIREBASE_CONFIG} from './firebase-config.mjs';
 const $=id=>document.getElementById(id),ui=window.attendanceUI;
 const SCANNER_NAME_KEY='attendance_scanner_name_v1';
@@ -15,7 +15,7 @@ function renderPortal(){
   const signed=!!cloud.portalRole,admin=cloud.portalRole==='admin';$('studentPortal').hidden=false;$('portalLoginBtn').parentElement.hidden=signed;$('portalSignedIn').hidden=!signed;$('portalAdminLookup').hidden=!admin;
   $('portalStatus').textContent=cloud.message;$('portalStatus').className='status'+(/không|chưa|lỗi|từ chối/i.test(cloud.message)?' error':'');
   if(!signed)return;const name=cloud.studentName||'Không có dữ liệu tên',mssv=cloud.studentId||'';$('portalProfile').innerHTML=admin&&!mssv?'<b>Chế độ Admin</b><br><span class="note">Nhập MSSV để xem đúng giao diện sinh viên.</span>':`<b>${esc(name)}</b><br><span class="note">MSSV: ${esc(mssv)}</span>`;
-  const rows=cloud.history||[];$('historyEmpty').hidden=!!rows.length;$('historyGrid').innerHTML=rows.map(r=>`<article class="history-item"><h3>${esc(r.eventName||'Sự kiện')}</h3><p><b>Thời gian điểm danh:</b> ${esc(formatTime(r.scannedAt))}</p></article>`).join('');
+  const rows=cloud.history||[];$('historyEmpty').hidden=!!rows.length;$('historyGrid').innerHTML=rows.map(r=>{const schedule=r.startTime&&r.endTime?`${r.startTime}–${r.endTime}`:r.startTime?`Từ ${r.startTime}`:r.endTime?`Đến ${r.endTime}`:'';return `<article class="history-item"><h3>${esc(r.eventName||'Sự kiện')}</h3>${r.eventDay?`<p><b>Ngày tổ chức:</b> ${esc(r.eventDay)}${schedule?' • '+esc(schedule):''}</p>`:''}${r.location?`<p><b>Địa điểm:</b> ${esc(r.location)}</p>`:''}<p><b>Thời gian điểm danh:</b> ${esc(formatTime(r.scannedAt))}</p></article>`;}).join('');
 }
 function renderScanner(){
   const pending=cloud.outbox?.entries().length||0,ready=!!cloud.authorized,open=cloud.isEventOpen();$('eventInfo').textContent=cloud.eventId?'Sự kiện: '+cloud.eventName+' • '+cloud.day+(open?'':' • Đã kết thúc'):'Đang tải sự kiện…';

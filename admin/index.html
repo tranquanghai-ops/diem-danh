@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f172a">
-  <title>Quản lý điểm danh V1.4</title>
+  <title>Quản lý điểm danh V1.5</title>
   <style>
     :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#2563eb;--success:#16a34a;--danger:#dc2626}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.app{max-width:1050px;margin:auto;padding:18px}
@@ -13,7 +13,7 @@
     dialog{border:0;border-radius:16px;padding:0;width:min(620px,calc(100vw - 24px));box-shadow:0 24px 80px #0f172a55}dialog::backdrop{background:#02061799}.modal{padding:18px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.image-stage{height:auto;max-height:min(68vh,650px);overflow:auto;background:#0f172a;border-radius:10px;text-align:center}.image-stage img{display:block;width:100%;height:auto;max-width:none;transition:width .12s}
     .attendance-table{min-width:760px;table-layout:fixed}.attendance-table .stt-col{width:48px}.attendance-table .mssv-col{width:105px}.attendance-table .student-col{width:170px}.attendance-table .member-col{width:115px}.attendance-table .delete-col{width:62px}.attendance-table .time-col{width:145px}.attendance-table .event-col{width:125px}.attendance-table .delete-col button{padding:7px 9px}
     .calendar{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px;max-width:390px}.calendar-head{display:flex;align-items:center;justify-content:space-between}.calendar-week,.calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}.calendar-week{font-size:11px;color:var(--muted);margin:8px 0 4px}.calendar-day{position:relative;padding:8px 3px;background:#f8fafc;font-weight:600}.calendar-day.selected{background:#dbeafe;color:#1d4ed8}.calendar-day i{position:absolute;width:6px;height:6px;border-radius:50%;background:#16a34a;bottom:2px;left:50%;transform:translateX(-50%)}
-    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.metric{padding:12px;border:1px solid var(--line);border-radius:12px;text-align:center}.metric b{display:block;font-size:22px}.check-row{display:flex;align-items:center;gap:8px;margin-top:8px}.check-row input{width:auto}.state-open{color:#166534}.state-closed{color:#991b1b}
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.metric{padding:12px;border:1px solid var(--line);border-radius:12px;text-align:center}.metric b{display:block;font-size:22px}.check-row{display:flex;align-items:center;gap:8px;margin-top:8px}.check-row input{width:auto}.state-open{color:#166534}.state-closed{color:#991b1b}.subsection{border-top:1px solid var(--line);padding-top:18px;margin-top:20px}.subsection h3{margin:0 0 10px;font-size:17px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.full{grid-column:1/-1}.file-name{font-size:12px;color:var(--muted);margin-left:8px}.role-select{min-width:150px;padding:7px}.event-list{min-width:900px}
     footer{text-align:center;color:var(--muted);font-size:12px;line-height:1.7;padding:24px 8px 4px}
     @media(max-width:600px){.app{padding:10px}.buttons button,.buttons a{flex:1}h1{font-size:20px}.header-actions{gap:6px}.header-actions button,.header-actions a{padding:9px 10px;font-size:13px}}
     .app{max-width:1280px}.admin-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;margin-top:18px;align-items:start}.admin-nav{position:sticky;top:18px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:5px;box-shadow:0 8px 25px #0f172a0d}.admin-nav button{text-align:left;background:transparent;color:#475569;padding:14px 12px;font-size:14px;line-height:1.4}.admin-nav button:hover{background:#f1f5f9}.admin-nav button[aria-current="page"]{background:#e8efff;color:#1d4ed8}.admin-nav button:focus-visible{outline:3px solid var(--primary);outline-offset:1px}.admin-main{min-width:0}.admin-main>.note{margin:0 0 12px}.admin-panel{display:none;margin-top:0;padding:0;overflow:hidden}.admin-panel.is-active{display:block}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 16px 0}.panel-heading h2{margin:0;font-size:21px}.panel-heading>b{font-size:12px;color:var(--muted);white-space:nowrap}.group-content{padding:16px}.group-content>.buttons{margin-bottom:12px}@media(max-width:760px){.admin-layout{grid-template-columns:minmax(0,1fr);gap:14px}.admin-nav{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:8px}.admin-nav button{padding:11px 9px;font-size:13px}.panel-heading h2{font-size:19px}}
@@ -26,91 +26,82 @@
   <section id="accessCard" class="card"><div id="adminStatus" class="status">Đang kiểm tra đăng nhập…</div><div class="login-actions"><button id="loginBtn" class="primary">Đăng nhập Google</button></div></section>
 
   <div id="manager" class="admin-layout" hidden>
-    <nav class="admin-nav" aria-label="Các mục quản lý"><button type="button" data-nav="events">Sự kiện</button><button type="button" data-nav="attendance">Danh sách điểm danh</button><button type="button" data-nav="photos">Ảnh chờ nhập MSSV</button><button type="button" data-nav="roster">Sinh viên đăng ký</button><button type="button" data-nav="students">Danh sách sinh viên</button><button type="button" data-nav="admins">Quản lý Admin</button></nav>
+    <nav class="admin-nav" aria-label="Các mục quản lý"><button type="button" data-nav="create">Tạo sự kiện</button><button type="button" data-nav="events">Sự kiện</button><button type="button" data-nav="students">Danh sách SV khoa</button><button type="button" data-nav="admins">Quản lý Admin</button></nav>
     <div class="admin-main">
     <p class="note">Quyền hiện tại: <b id="roleLabel"></b></p>
     <section class="card admin-panel" data-panel="admins" id="ownerAdminPanel" hidden>
       <div class="panel-heading"><h2>Quản lý Admin</h2></div>
       <div class="group-content">
-      <p class="note">Chủ sở hữu có thể cấp Admin cấp cao hoặc Sub Admin. Admin cấp cao xem được toàn bộ sự kiện; dấu chọn bên dưới quyết định người đó có được thêm/xóa Sub Admin hay không.</p>
+      <p class="note">Chủ sở hữu có thể đổi trực tiếp quyền của từng thành viên bằng thẻ chọn. Admin cấp cao xem được toàn bộ sự kiện; tùy chọn bên dưới quyết định người đó có được thêm/xóa Sub Admin hay không.</p>
       <div class="row"><div style="flex:1;min-width:220px"><label for="adminEmail">Gmail / email Google</label><input id="adminEmail" type="email" placeholder="ten@gmail.com"></div><div style="flex:1;min-width:180px"><label for="adminName">Tên hiển thị</label><input id="adminName" maxlength="100"></div><div id="adminRoleWrap" style="flex:0 1 180px"><label for="adminRole">Cấp quyền</label><select id="adminRole"><option value="sub">Sub Admin</option><option value="senior">Admin cấp cao</option></select></div><button id="addAdminBtn" class="primary" style="align-self:end">Thêm admin</button></div>
       <label id="manageSubsWrap" class="check-row"><input id="adminCanManage" type="checkbox"> Cho phép Admin cấp cao thêm/xóa Sub Admin</label>
-      <div class="table-wrap" style="margin-top:12px;max-height:240px"><table><thead><tr><th>Tên</th><th>Email</th><th>Quyền</th><th>Thao tác</th></tr></thead><tbody id="adminRows"></tbody></table><p id="adminEmpty" class="note" style="text-align:center">Chưa có admin.</p></div>
+      <div class="table-wrap" style="margin-top:12px;max-height:280px"><table><thead><tr><th>Tên</th><th>Email</th><th>Quyền</th><th>Quản lý Sub Admin</th><th>Thao tác</th></tr></thead><tbody id="adminRows"></tbody></table><p id="adminEmpty" class="note" style="text-align:center">Chưa có admin.</p></div>
     
       </div>
     </section>
     <section class="card admin-panel" data-panel="students" id="studentDirectory" hidden>
-      <div class="panel-heading"><h2>Danh sách sinh viên dùng chung</h2></div>
+      <div class="panel-heading"><h2>Danh sách SV khoa</h2></div>
       <div class="group-content">
       <div class="between"><div><p class="note" style="margin:0">Chủ sở hữu và Admin cấp cao được bổ sung, xuất hoặc xóa sinh viên.</p></div><div class="buttons"><label class="button primary" for="studentFile">↑ Nhập Excel / CSV</label><input id="studentFile" type="file" accept=".xlsx,.xls,.csv" hidden><button id="exportStudentsBtn" class="success">↓ Xuất Excel</button></div></div>
-      <div class="row"><div style="flex:0 1 160px"><label for="studentMssv">MSSV</label><input id="studentMssv" maxlength="12" autocapitalize="characters" placeholder="12300325"></div><div style="flex:1;min-width:220px"><label for="studentName">Họ tên</label><input id="studentName" maxlength="150" placeholder="Nguyễn Văn A"></div><button id="addStudentBtn" class="primary" style="align-self:end">Thêm / cập nhật</button></div>
-      <div class="between" style="margin-top:12px"><label for="studentSearch" style="margin:0">Tìm sinh viên</label><b id="studentCount">0 sinh viên</b></div><input id="studentSearch" placeholder="Nhập MSSV hoặc họ tên" style="margin:6px 0 10px">
-      <div class="table-wrap" style="max-height:360px"><table><thead><tr><th style="width:130px">MSSV</th><th>Họ tên</th><th style="width:75px">Xóa</th></tr></thead><tbody id="studentRows"></tbody></table><p id="studentEmpty" class="note" style="text-align:center">Chưa có danh sách sinh viên.</p></div>
+      <div class="form-grid"><div><label for="studentMssv">MSSV</label><input id="studentMssv" maxlength="12" autocapitalize="characters" placeholder="12300325"></div><div><label for="studentName">Họ và tên</label><input id="studentName" maxlength="150" placeholder="Nguyễn Văn A"></div><div><label for="studentGender">Giới tính</label><input id="studentGender" maxlength="30" placeholder="Nam / Nữ"></div><div><label for="studentMajor">Ngành</label><input id="studentMajor" maxlength="120" placeholder="Thiết kế nội thất"></div><div><label for="studentClass">Lớp</label><input id="studentClass" maxlength="80" placeholder="Ví dụ: 230H0101"></div><div style="align-self:end"><button id="addStudentBtn" class="primary">Thêm / cập nhật</button></div></div>
+      <div class="between" style="margin-top:12px"><label for="studentSearch" style="margin:0">Tìm sinh viên</label><b id="studentCount">0 sinh viên</b></div><input id="studentSearch" placeholder="Nhập MSSV, họ tên, ngành hoặc lớp" style="margin:6px 0 10px">
+      <div class="table-wrap" style="max-height:420px"><table><thead><tr><th style="width:130px">MSSV</th><th>Họ và tên</th><th>Giới tính</th><th>Ngành</th><th>Lớp</th><th style="width:75px">Xóa</th></tr></thead><tbody id="studentRows"></tbody></table><p id="studentEmpty" class="note" style="text-align:center">Chưa có danh sách sinh viên.</p></div>
     
       </div>
     </section>
-    <section class="card admin-panel" data-panel="events">
-      <div class="panel-heading"><h2>Sự kiện và thành viên</h2></div>
+    <section class="card admin-panel" data-panel="create">
+      <div class="panel-heading"><h2>Tạo sự kiện</h2></div>
       <div class="group-content">
-      <div class="between"><div class="buttons" style="margin-top:0"><button id="newEventBtn" class="primary">＋ Tạo sự kiện</button></div></div>
-      <div class="row"><div style="flex:0 1 190px"><label for="day">Ngày</label><input id="day" type="date"></div><div style="align-self:end"><button id="toggleCalendarBtn" type="button">📅 Lịch sự kiện</button></div><div style="align-self:end"><button id="showAllEventsBtn" type="button">Tất cả sự kiện</button></div><div style="flex:1;min-width:220px"><label for="eventSelect">Sự kiện trong ngày</label><select id="eventSelect"><option value="">Chưa có sự kiện</option></select></div></div>
-      <div id="eventCalendar" class="calendar" hidden><div class="calendar-head"><button id="prevMonth" type="button">‹</button><b id="calendarLabel"></b><button id="nextMonth" type="button">›</button></div><div class="calendar-week"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div><div id="calendarDays" class="calendar-days"></div><p class="note" style="margin:8px 0 0"><span style="color:#16a34a">●</span> Ngày có sự kiện đã lưu</p></div>
+      <div class="form-grid"><div class="full"><label for="newEventName">Tên sự kiện</label><input id="newEventName" maxlength="100" placeholder="Ví dụ: Sinh hoạt công dân đầu khóa"></div><div><label for="newEventDay">Ngày tổ chức</label><input id="newEventDay" type="date"></div><div><label for="newEndDay">Ngày kết thúc điểm danh (tối đa 10 ngày)</label><input id="newEndDay" type="date"></div><div class="full"><label for="newLocation">Địa điểm (có thể để trống và bổ sung sau)</label><input id="newLocation" maxlength="200" placeholder="Ví dụ: Hội trường 6B"></div><div><label for="newStartTime">Giờ bắt đầu (không bắt buộc)</label><input id="newStartTime" type="time"></div><div><label for="newEndTime">Giờ kết thúc (không bắt buộc)</label><input id="newEndTime" type="time"></div><div class="full"><label for="newMembers">Danh sách SV được cấp quyền quản lý phụ — mỗi dòng một họ tên</label><textarea id="newMembers" placeholder="Nguyễn Văn A&#10;Trần Văn B"></textarea></div><div class="full"><label>Danh sách sinh viên đã đăng ký trước sự kiện</label><div class="row"><label class="button" for="newRosterFile">↑ Chọn Excel / CSV</label><input id="newRosterFile" type="file" accept=".xlsx,.xls,.csv" hidden><span id="newRosterFileName" class="file-name">Chưa chọn tệp (không bắt buộc)</span></div><p class="note">Tệp cần có cột MSSV và Họ tên. Danh sách sẽ được gắn riêng với sự kiện vừa tạo.</p></div></div>
+      <div class="buttons"><button id="createEventBtn" class="primary">Tạo và kích hoạt sự kiện</button></div>
+      </div>
+    </section>
+
+    <section class="card admin-panel" data-panel="events">
+      <div class="panel-heading"><h2>Sự kiện</h2><b id="eventCount">0 sự kiện</b></div>
+      <div class="group-content">
+      <p class="note">Chọn “Quản lý” để xem và xử lý danh sách đăng ký, ảnh chờ nhập MSSV và dữ liệu điểm danh của từng sự kiện.</p>
+      <div class="table-wrap"><table class="event-list"><thead><tr><th>STT</th><th>Sự kiện</th><th>Ngày</th><th>Địa điểm</th><th>Thời gian</th><th>Người tạo</th><th>Trạng thái</th><th></th></tr></thead><tbody id="eventArchiveRows"></tbody></table><p id="eventArchiveEmpty" class="note" style="text-align:center">Chưa có sự kiện.</p></div>
+
+      <div id="selectedEventManager" class="subsection" hidden><h3>Quản lý sự kiện đang chọn</h3>
       <div class="event-name-head"><label for="eventName">Tên sự kiện đang chọn</label><span id="syncStatus" class="sync-badge" hidden>✓ Đã đồng bộ</span></div><input id="eventName" maxlength="100" placeholder="Ví dụ: Điểm danh Đồ án Nội thất – ca sáng">
+      <div class="form-grid"><div class="full"><label for="eventLocation">Địa điểm</label><input id="eventLocation" maxlength="200" placeholder="Có thể bổ sung sau"></div><div><label for="eventStartTime">Giờ bắt đầu</label><input id="eventStartTime" type="time"></div><div><label for="eventEndTime">Giờ kết thúc</label><input id="eventEndTime" type="time"></div></div>
       <p id="eventCreator" class="note"></p>
       <label for="members">Danh sách SV được cấp quyền quản lý phụ — mỗi dòng một họ tên</label><textarea id="members" placeholder="Nguyễn Văn A&#10;Trần Văn B"></textarea>
       <p id="eventState" class="note"></p>
       <div class="buttons"><button id="saveEventBtn" class="primary">Lưu thay đổi</button><button id="copyLinkBtn" class="success">Sao chép link sự kiện</button><button id="closeEventBtn">Kết thúc sự kiện ngay</button><button id="deleteEventBtn" class="danger">Xóa sự kiện</button></div>
       <label for="shareLink">Liên kết dành cho thành viên</label><input id="shareLink" readonly>
       <p class="note">Mọi người có link đều có thể quét sau khi nhập tên. Người có tên khớp danh sách là quản lý phụ của sự kiện. Sub Admin chỉ thấy và xóa sự kiện do mình tạo; Admin cấp cao thấy toàn bộ sự kiện.</p>
-    
-      </div>
-    </section>
-
-    <section class="card admin-panel" data-panel="roster">
-      <div class="panel-heading"><h2>Danh sách sinh viên đăng ký</h2></div>
-      <div class="group-content">
+      <div class="subsection"><h3>Danh sách sinh viên đăng ký</h3>
       <div class="between"><div><p class="note" style="margin:0">Nhận Excel/CSV có cột MSSV và Họ tên.</p></div><label class="button primary" for="rosterFile">↑ Tải Excel / CSV</label><input id="rosterFile" type="file" accept=".xlsx,.xls,.csv" hidden></div>
       <div class="metrics"><div class="metric"><b id="rosterPresent">0</b>Có mặt</div><div class="metric"><b id="rosterAbsent">0</b>Vắng</div><div class="metric"><b id="rosterOutside">0</b>Ngoài danh sách</div></div>
       <div class="table-wrap" style="max-height:320px"><table><thead><tr><th>MSSV</th><th>Họ tên</th><th>Đối chiếu</th></tr></thead><tbody id="rosterRows"></tbody></table><p id="rosterEmpty" class="note" style="text-align:center">Sự kiện chưa có danh sách đăng ký.</p></div>
     
       </div>
-    </section>
-
-    <section class="card admin-panel" data-panel="photos">
-      <div class="panel-heading"><h2>Ảnh chờ nhập MSSV</h2><b id="photoCount">0 ảnh</b></div>
-      <div class="group-content">
-      
+      <div class="subsection"><div class="between"><h3>Ảnh chờ nhập MSSV</h3><b id="photoCount">0 ảnh</b></div>
       <div class="table-wrap"><table><thead><tr><th>STT</th><th>MSSV</th><th>Thành viên</th><th>Thời gian</th><th>Nhập MSSV</th><th>Thao tác</th></tr></thead><tbody id="photoRows"></tbody></table><p id="photoEmpty" class="note" style="text-align:center">Không có ảnh đang chờ.</p></div>
-    
       </div>
-    </section>
-
-    <section class="card admin-panel" data-panel="attendance">
-      <div class="panel-heading"><h2>Danh sách điểm danh</h2><b id="savedCount">0 lượt</b></div>
-      <div class="group-content">
-      
+      <div class="subsection"><div class="between"><h3>Danh sách điểm danh</h3><b id="savedCount">0 lượt</b></div>
       <div class="buttons"><button id="excelBtn" class="success">↓ Excel</button><button id="csvBtn">↓ CSV</button><button id="jsonBtn">Sao lưu JSON</button><button id="deleteAllBtn" class="danger">Xóa toàn bộ lượt</button></div>
       <div class="table-wrap"><table class="attendance-table"><thead><tr><th class="stt-col">STT</th><th class="mssv-col">MSSV</th><th class="student-col">Họ tên</th><th class="member-col">Người quét</th><th class="delete-col">Xóa</th><th class="time-col">Ngày quét</th><th class="event-col">Sự kiện</th></tr></thead><tbody id="rows"></tbody></table><p id="empty" class="note" style="text-align:center">Chưa có dữ liệu.</p></div>
     
-      </div>
+      </div></div>
     </section>
   </div>
     </div>
-  <footer><div>Quản lý điểm danh • V1.4</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Quản lý điểm danh • V1.5</div><div>Built by Trần Quang Hải</div></footer>
 </main>
 
-<dialog id="newEventDialog"><div class="modal"><h2>Tạo sự kiện mới</h2><label for="newEventName">Tên sự kiện</label><input id="newEventName" maxlength="100"><label for="newEndDay">Ngày kết thúc (tối đa 10 ngày, mặc định sau 2 ngày)</label><input id="newEndDay" type="date"><label for="newMembers">Danh sách SV được cấp quyền quản lý phụ — mỗi dòng một tên</label><textarea id="newMembers" placeholder="Nguyễn Văn A&#10;Trần Văn B"></textarea><div class="modal-actions"><button id="cancelNewEvent">Hủy</button><button id="createEventBtn" class="primary">Tạo và kích hoạt</button></div></div></dialog>
 <dialog id="imageViewerDialog"><div class="modal"><div class="between"><h2>Xem hình chụp</h2><button id="closeImageViewer">Đóng</button></div><div class="image-stage"><img id="viewerImage" alt="Hình thẻ đã chụp"></div><div class="buttons"><button id="zoomOut">− Thu nhỏ</button><button id="zoomReset">100%</button><button id="zoomIn">＋ Phóng to</button></div></div></dialog>
-<dialog id="eventArchiveDialog" style="width:min(820px,calc(100vw - 24px))"><div class="modal"><div class="between"><div><h2>Tất cả sự kiện</h2><p class="note" style="margin:4px 0">Sự kiện mới nhất được xếp trên cùng.</p></div><button id="closeEventArchive">Đóng</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>STT</th><th>Sự kiện</th><th>Ngày</th><th>Người tạo</th><th>Thời gian tạo</th><th></th></tr></thead><tbody id="eventArchiveRows"></tbody></table><p id="eventArchiveEmpty" class="note" style="text-align:center">Chưa có sự kiện.</p></div></div></dialog>
 
 <script>
 (() => {
   const panels = [...document.querySelectorAll('[data-panel]')];
   const buttons = [...document.querySelectorAll('[data-nav]')];
-  let active = 'events';
+  let active = 'create';
   function refreshNavigation() {
     const allowed = panels.filter(panel => !panel.hidden);
-    if (!allowed.some(panel => panel.dataset.panel === active)) active = 'events';
+    if (!allowed.some(panel => panel.dataset.panel === active)) active = 'create';
     panels.forEach(panel => panel.classList.toggle('is-active', !panel.hidden && panel.dataset.panel === active));
     buttons.forEach(button => {
       button.hidden = !allowed.some(panel => panel.dataset.panel === button.dataset.nav);
@@ -128,5 +119,5 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module" src="./admin-ui.mjs?v=1.4"></script>
+<script type="module" src="./admin-ui.mjs?v=1.5"></script>
 </body></html>

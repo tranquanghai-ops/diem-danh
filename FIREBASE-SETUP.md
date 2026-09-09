@@ -1,4 +1,4 @@
-# Kết nối Firebase cho Điểm danh V1.4
+# Kết nối Firebase cho Điểm danh V1.5
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sinh viên quét bằng liên kết riêng của sự kiện; trang chính dùng để tra cứu lịch sử điểm danh bằng email trường. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -32,15 +32,15 @@ tranquanghai-ops.github.io
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `Diem danh`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.4.
+- Cấu hình Web của dự án `diem-danh-tknt` đã được lưu sẵn trong ứng dụng V1.5.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.4**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/diem-danh/admin/), kiểm tra **V1.5**.
 - Nhấn **Đăng nhập Google**, chọn tài khoản giảng viên. Không cần dán lại `firebaseConfig`.
-- Chọn ngày, nhấn **Tạo sự kiện**, nhập tên sự kiện và danh sách thành viên, mỗi dòng một họ tên.
-- Nút **Sao chép link sự kiện** tạo liên kết riêng ngắn gọn để gửi sinh viên. Trang chính `https://tranquanghai-ops.github.io/diem-danh/` không cho phép quét.
+- Mở tab **Tạo sự kiện**, nhập tên, ngày tổ chức; địa điểm và giờ có thể để trống để bổ sung sau. Có thể chọn luôn Excel/CSV danh sách sinh viên đã đăng ký trước sự kiện.
+- Nút **Sao chép link sự kiện** tạo liên kết theo tên, ví dụ `?e=SINH-HOAT-CONG-DAN`, để gửi sinh viên. Nếu trùng tên, hệ thống tự thêm `-2`, `-3`… Trang chính `https://tranquanghai-ops.github.io/diem-danh/` không cho phép quét.
 - Trên điện thoại SV, mở đúng link riêng của sự kiện bằng Chrome.
 - Khi đổi điện thoại quản lý, mở cùng liên kết và đăng nhập đúng tài khoản Google ban đầu.
 
@@ -49,14 +49,15 @@ tranquanghai-ops.github.io
 - Đăng nhập trang quản lý bằng tài khoản chủ sở hữu.
 - Trong **Quản lý admin**, nhập đúng Gmail/email Google của người cần cấp quyền rồi bấm **Thêm admin**.
 - Admin dùng chính tài khoản Google đó để đăng nhập tại cùng địa chỉ `/admin/`.
-- Admin được tạo, sửa, kích hoạt và quản lý dữ liệu sự kiện; không được thêm/xóa admin khác và chỉ được xóa sự kiện do chính mình tạo.
-- Sự kiện mới ghi tên người tạo. Nút **Tất cả sự kiện** mở danh sách lịch sử, xếp sự kiện mới nhất lên trên để truy xuất lại dữ liệu cũ.
+- Chủ sở hữu dùng thẻ chọn trong từng dòng để chuyển một thành viên giữa **Admin cấp cao** và **Sub Admin**.
+- Sub Admin chỉ quản lý sự kiện do mình tạo. Admin cấp cao xem toàn bộ sự kiện; chỉ người được chủ sở hữu bật quyền mới có thể thêm/xóa Sub Admin.
+- Tab **Sự kiện** liệt kê lịch sử mới nhất ở trên. Khi chọn **Quản lý**, danh sách đăng ký, ảnh chờ nhập MSSV và danh sách điểm danh của đúng sự kiện đó mới được mở ra.
 
 ## Cách dùng mỗi ngày
 
-- Mỗi sự kiện có tên, ngày, danh sách thành viên, liên kết và dữ liệu điểm danh riêng. Có thể tạo nhiều sự kiện trong cùng ngày.
+- Mỗi sự kiện có tên, ngày, địa điểm, giờ, danh sách thành viên, liên kết và dữ liệu điểm danh riêng. Có thể tạo nhiều sự kiện trong cùng ngày; địa điểm và giờ được phép bổ sung sau.
 - Mọi người có đúng liên kết sự kiện đều được quét sau khi nhập tên người quét. Danh sách tên do GV nhập chỉ dùng để cấp quyền **SV quản lý phụ**: xem/tải toàn bộ dữ liệu sự kiện và xóa từng lượt sai. Chỉ GV được sửa sự kiện, sửa danh sách quyền hoặc dùng chức năng xóa toàn bộ.
-- Mỗi sự kiện bắt buộc dùng link riêng. Link mới có dạng ngắn `?e=xxxxxxxxxx`; sự kiện cũ tự tạo mã ngắn khi Admin mở lại.
+- Mỗi sự kiện bắt buộc dùng link riêng. Link mới lấy tên sự kiện làm mã dễ đọc; link mã ngắn của sự kiện cũ vẫn tiếp tục hoạt động.
 - Danh sách trên màn hình hiển thị mới nhất ở trên; Excel/CSV sắp xếp MSSV từ nhỏ đến lớn và dùng thứ tự cột: STT, MSSV, Sự kiện, Thành viên quét, Thời gian.
 - Ảnh chụp không quét được lấy toàn bộ vùng camera đang hiển thị để thấy cả MSSV và mã vạch. Người chụp có thể mở lại, phóng to và nhập MSSV; người quản lý vẫn có thể xem, hiệu chỉnh hoặc xóa từng ảnh.
 - **Đã nhận mã — chờ gửi**: mã đã được lưu vào hàng đợi của điện thoại, chưa được máy chủ xác nhận.
@@ -67,10 +68,10 @@ tranquanghai-ops.github.io
 - **Excel/CSV/JSON** xuất sự kiện đang chọn. Tên tệp gồm tên sự kiện và ngày.
 - Người quản lý có thể xóa từng lượt quét sai hoặc xóa toàn bộ lượt điểm danh của sự kiện đang chọn.
 
-## Danh sách sinh viên dùng chung và trang tra cứu
+## Danh sách SV khoa và trang tra cứu
 
-- Chủ sở hữu hoặc Admin cấp cao mở **Danh sách sinh viên dùng chung** trên trang quản lý để nhập Excel/CSV, thêm hoặc cập nhật thủ công, xóa từng sinh viên và xuất lại Excel.
-- Tệp nhập cần có cột `Mã SV` hoặc `MSSV`; tên có thể nằm trong cột `Họ tên`, hoặc tách thành `Họ lót` và `Tên`. Nhập lại tệp chỉ bổ sung/cập nhật, không tự xóa danh sách cũ.
+- Chủ sở hữu hoặc Admin cấp cao mở **Danh sách SV khoa** trên trang quản lý để nhập Excel/CSV, thêm hoặc cập nhật MSSV, họ tên, giới tính, ngành, lớp; xóa từng sinh viên và xuất lại Excel.
+- Tệp nhập cần có cột `Mã SV` hoặc `MSSV`; tên có thể nằm trong cột `Họ tên`, hoặc tách thành `Họ lót` và `Tên`. Các cột `Giới tính`, `Ngành`, `Lớp` được lưu để Admin quản lý nhưng không hiển thị trong danh sách điểm danh. Nhập lại tệp chỉ bổ sung/cập nhật, không tự xóa danh sách cũ.
 - Khi quét, ứng dụng đối chiếu MSSV với danh sách này và hiển thị họ tên. MSSV ngoài danh sách hiện **Không có dữ liệu tên**.
 - Mỗi sinh viên trong danh sách được ánh xạ tới email `mssv@student.tdtu.edu.vn`. Sinh viên mở [trang tra cứu](https://tranquanghai-ops.github.io/diem-danh/), đăng nhập đúng email trường và chỉ xem được lịch sử của chính mình.
 - Chủ sở hữu và Admin cấp cao mở cùng trang tra cứu sẽ có ô nhập MSSV để xem thử đúng giao diện sinh viên. Sub Admin không có quyền này.
