@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Điểm danh Barcode - MSSV V1.2.2</title>
+  <title>Điểm danh Barcode - MSSV V1.3</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -128,21 +128,23 @@
       </table>
       <div id="emptyTable" class="empty">Chưa có sinh viên điểm danh.</div>
     </div>
-    <p id="syncInfo" class="note" role="status">Đang lưu trên điện thoại này • Chưa kết nối Firebase</p>
+    <p id="syncInfo" class="note" role="status">Đang lưu trên điện thoại này • Chưa kết nối dữ liệu</p>
   </section>
 
   <details class="card settings">
     <summary>Tùy chọn máy quét</summary>
     <label for="cameraSelect">Camera sau</label>
     <select id="cameraSelect" aria-label="Chọn camera sau"></select>
-    <label for="soundSelect" style="margin-top:12px">Âm thanh khi quét</label>
-    <select id="soundSelect"><option value="bell">Chuông ngắn</option><option value="double">Ting đôi</option><option value="beep">Beep rõ</option><option value="bright">Âm báo sáng</option><option value="none">Không âm thanh</option></select>
+    <label for="successSoundSelect" style="margin-top:12px">Âm thanh quét thành công</label>
+    <select id="successSoundSelect"><option value="bell">Chuông ngắn</option><option value="double">Ting đôi</option><option value="beep">Beep rõ</option><option value="bright">Âm báo sáng</option><option value="none">Không âm thanh</option></select>
+    <label for="duplicateSoundSelect" style="margin-top:12px">Âm thanh quét trùng</label>
+    <select id="duplicateSoundSelect"><option value="low">Cảnh báo trầm</option><option value="doubleLow">Hai tiếng trầm</option><option value="buzz">Buzz ngắn</option><option value="none">Không âm thanh</option></select>
     <div class="buttons"><button class="secondary" id="testFeedbackBtn">🔊 Thử thành công</button><button class="secondary" id="testDuplicateBtn">⚠ Thử quét trùng</button></div>
     <p id="feedbackHint" class="note" role="status"></p>
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>Điểm danh sinh viên • V1.2.2</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>Điểm danh sinh viên • V1.3</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -183,7 +185,8 @@
 
   const STORAGE_KEY = 'barcodeAttendanceApp_v1';
   const SCANNER_NAME_KEY = 'attendance_scanner_name_v1';
-  const SOUND_KEY = 'attendance_sound_v1';
+  const SUCCESS_SOUND_KEY = 'attendance_success_sound_v1';
+  const DUPLICATE_SOUND_KEY = 'attendance_duplicate_sound_v1';
   const state = {
     data: loadData(),
     reader: null,
@@ -206,7 +209,8 @@
   const cameraSelect = $('cameraSelect');
   const scannerNameInput = $('scannerName');
   scannerNameInput.value = localStorage.getItem(SCANNER_NAME_KEY) || '';
-  $('soundSelect').value=localStorage.getItem(SOUND_KEY)||'bell';
+  $('successSoundSelect').value=localStorage.getItem(SUCCESS_SOUND_KEY)||'bell';
+  $('duplicateSoundSelect').value=localStorage.getItem(DUPLICATE_SOUND_KEY)||'low';
 
   function scannerName(){ return scannerNameInput.value.trim(); }
   function requireScannerName(){
@@ -275,7 +279,7 @@
     $('emptyTable').style.display = rows.length ? 'none' : 'block';
     [...rows].reverse().forEach((r,i)=>{
       const tr = document.createElement('tr');
-      const code=r.kind==='photo'?(validStudentId(r.mssv)?'<b>'+escapeHtml(r.mssv)+'</b><br>':'')+'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Xem hình</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
+      const code=r.kind==='photo'?(validStudentId(r.mssv)?'<b>'+escapeHtml(r.mssv)+'</b><br>':'')+'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Xem hình</button>':r.photoId&&r.imageData?'<button class="photo-link" data-view-photo="'+escapeHtml(r.photoId)+'"><b>'+escapeHtml(r.mssv)+'</b> 🖼️</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
       const canManage=window.attendanceCloud?.owner||window.attendanceCloud?.delegated;
       const remove=r.kind==='scan'&&canManage?'<button class="danger" data-delete-scan="'+escapeHtml(r.mssv)+'">Xóa</button>':'—';
       tr.innerHTML = '<td class="stt-col">'+(rows.length-i)+'</td><td class="mssv-col">'+code+'</td><td class="scanner-col">'+escapeHtml(r.memberName||r.scannerName||'Không rõ')+'</td><td class="delete-col">'+remove+'</td><td class="time-col">'+escapeHtml(fmtTime(r.time))+'</td><td class="status-col"><span class="badge">'+escapeHtml(r.status||'Có mặt')+'</span></td>';
@@ -286,8 +290,8 @@
   let viewerScale=1,viewedPhotoId='';
   function applyZoom(){viewerScale=Math.max(.5,Math.min(4,viewerScale));$('viewerImage').style.width=(viewerScale*100)+'%';$('zoomReset').textContent=Math.round(viewerScale*100)+'%';}
   function viewPhoto(id){
-    const photo=(currentBatch()?.attendance||[]).find(r=>r.kind==='photo'&&r.id===id);if(!photo?.imageData)return;
-    viewedPhotoId=id;viewerScale=1;$('viewerImage').src=photo.imageData;applyZoom();
+    const photo=(currentBatch()?.attendance||[]).find(r=>(r.kind==='photo'&&r.id===id)||(r.photoId===id&&r.imageData));if(!photo?.imageData)return;
+    viewedPhotoId=photo.kind==='photo'?id:'';viewerScale=1;$('viewerImage').src=photo.imageData;applyZoom();
     const canEdit=photo.uid&&photo.uid===window.attendanceCloud?.auth?.currentUser?.uid;
     $('photoMssvEditor').hidden=!canEdit;$('photoMssv').value=validStudentId(photo.mssv)?photo.mssv:'';
     $('imageViewerDialog').showModal();
@@ -297,7 +301,7 @@
   $('zoomIn').onclick=()=>{viewerScale+=.25;applyZoom();};$('zoomOut').onclick=()=>{viewerScale-=.25;applyZoom();};$('zoomReset').onclick=()=>{viewerScale=1;applyZoom();};
   $('savePhotoMssv').onclick=async()=>{
     const button=$('savePhotoMssv');button.disabled=true;
-    try{await window.attendanceCloud.labelOwnPhoto(viewedPhotoId,$('photoMssv').value);$('imageViewerDialog').close();setStatus('success','✓ Đã lưu MSSV.','Hình chụp vẫn được giữ để xem lại.');void beep(true);}
+    try{await window.attendanceCloud.labelOwnPhoto(viewedPhotoId,$('photoMssv').value);$('imageViewerDialog').close();setStatus('success','✓ Đã lưu MSSV.','Đã chuyển xuống danh sách điểm danh.');showToast('success','✓ Điểm danh thành công',$('photoMssv').value.trim().toUpperCase());void beep(true);}
     catch(e){setStatus('error','Không lưu được MSSV.',e.message||'Vui lòng thử lại.');}
     finally{button.disabled=false;}
   };
@@ -476,7 +480,7 @@
       batch.duplicateCount=(batch.duplicateCount||0)+1; saveData(); render(); setStatus('warn','Đã điểm danh trước đó.',mssv);showToast('warn','⚠ Đã quét trùng',mssv); beep(false); return;
     }
     batch.attendance.push({mssv,time:nowIso(),source:source||'camera',scannerName:operator});
-    saveData(); render(); setStatus('success','✓ Điểm danh thành công.', 'MSSV: '+mssv);showToast('','✓ Điểm danh thành công','MSSV: '+mssv); beep(true);
+    saveData(); render(); setStatus('success','✓ Điểm danh thành công.', 'MSSV: '+mssv);showToast('success','✓ Điểm danh thành công','MSSV: '+mssv); beep(true);
   }
   let audioContext = null;
   function updateFeedbackHint(message){
@@ -507,11 +511,12 @@
     if(!audioContext || audioContext.state!=='running'){
       if(!await unlockAudio()) return;
     }
-    if($('soundSelect').value==='none')return;
+    const profile=ok?$('successSoundSelect').value:$('duplicateSoundSelect').value;if(profile==='none')return;
     try{
-      const ctx=audioContext,t=ctx.currentTime,profile=$('soundSelect').value;
+      const ctx=audioContext,t=ctx.currentTime;
       const success={bell:[[1046,0,.20]],double:[[880,0,.11],[1320,.14,.14]],beep:[[760,0,.28]],bright:[[1200,0,.10],[1600,.11,.16]]};
-      const notes=ok?(success[profile]||success.bell):[[260,0,.16],[210,.20,.20]];
+      const duplicate={low:[[260,0,.18]],doubleLow:[[280,0,.14],[210,.19,.20]],buzz:[[170,0,.30]]};
+      const notes=ok?(success[profile]||success.bell):(duplicate[profile]||duplicate.low);
       notes.forEach(([frequency,delay,duration])=>{const osc=ctx.createOscillator(),gain=ctx.createGain(),start=t+delay;osc.type=profile==='beep'?'square':'sine';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(.24,start+.012);gain.gain.exponentialRampToValueAtTime(.0001,start+duration);osc.connect(gain).connect(ctx.destination);osc.onended=()=>{osc.disconnect();gain.disconnect();};osc.start(start);osc.stop(start+duration+.02);});
     }catch(e){ updateFeedbackHint('Chưa phát được tiếng. Nhấn “Thử tiếng / rung” để thử lại.'); }
   }
@@ -529,7 +534,8 @@
   }
   $('testFeedbackBtn').onclick=()=>{ void beep(true); };
   $('testDuplicateBtn').onclick=()=>{ void beep(false); };
-  $('soundSelect').onchange=()=>{localStorage.setItem(SOUND_KEY,$('soundSelect').value);void beep(true);};
+  $('successSoundSelect').onchange=()=>{localStorage.setItem(SUCCESS_SOUND_KEY,$('successSoundSelect').value);void beep(true);};
+  $('duplicateSoundSelect').onchange=()=>{localStorage.setItem(DUPLICATE_SOUND_KEY,$('duplicateSoundSelect').value);void beep(false);};
 
   $('startBtn').onclick=startScanner;
   $('stopBtn').onclick=async()=>{ await stopScanner(); setStatus('', 'Đã dừng camera.'); };
@@ -606,6 +612,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=1.2.2"></script>
+<script type="module" src="./cloud-ui.mjs?v=1.3"></script>
 </body>
 </html>

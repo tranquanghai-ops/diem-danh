@@ -3,172 +3,27 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {doc,setDoc,getDoc,deleteDoc,updateDoc,collection,collectionGroup,getDocs,query,where,runTransaction,serverTimestamp} from 'firebase/firestore';
-const room='a'.repeat(48),day='2026-09-07',eventId='11111111-1111-4111-8111-111111111111';let env,owner,a,b;
-const memberName='Lê Phạm Quỳnh Anh',memberNormal=memberName.normalize('NFC').toLocaleLowerCase('vi-VN');
-const memberHash=createHash('sha256').update(memberNormal).digest('hex');
-const ref=(db,mssv)=>doc(db,'rooms',room,'days',day,'attendance',mssv);
-const payload=(uid,mssv,id)=>({uid,mssv,requestId:id,source:'camera',scannerName:'Nguyễn Văn A',scannedAt:'2026-09-07T09:00:00Z',createdAt:serverTimestamp()});
-before(async()=>{
- env=await initializeTestEnvironment({projectId:'demo-attendance',firestore:{host:'127.0.0.1',port:8088,rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});
- owner=env.authenticatedContext('teacher',{firebase:{sign_in_provider:'google.com'}}).firestore();
- a=env.authenticatedContext('scannerA',{firebase:{sign_in_provider:'anonymous'}}).firestore();
- b=env.authenticatedContext('scannerB',{firebase:{sign_in_provider:'anonymous'}}).firestore();
- await setDoc(doc(owner,'rooms',room),{ownerUid:'teacher',createdAt:serverTimestamp()});
-});
-after(async()=>{await env?.cleanup()});
-test('two scanners commit same MSSV concurrently: exactly one immutable record',async()=>{
- const scan=(db,uid,id)=>runTransaction(db,async tx=>{
-  const r=ref(db,'00123'),snap=await tx.get(r);if(snap.exists())return 'duplicate';
-  tx.set(r,payload(uid,'00123',id));return 'saved';
- });
- const results=await Promise.all([scan(a,'scannerA','a'.repeat(36)),scan(b,'scannerB','b'.repeat(36))]);
- assert.deepEqual(results.sort(),['duplicate','saved']);
- const original=(await getDoc(ref(a,'00123'))).data();assert(['scannerA','scannerB'].includes(original.uid));
- await assertFails(setDoc(ref(b,'00123'),payload('scannerB','00123','c'.repeat(36))));
- assert.equal((await getDoc(ref(a,'00123'))).data().requestId,original.requestId);
-});
-test('unauthenticated user cannot read, write, or enumerate',async()=>{
- const guest=env.unauthenticatedContext().firestore();
- await assertFails(getDoc(ref(guest,'00123')));await assertFails(getDoc(doc(guest,'rooms',room)));
- await assertFails(setDoc(ref(guest,'234'),payload('guest','234','a'.repeat(36))));
-});
-test('participants cannot download the class list; only its owner can enumerate it',async()=>{
- await assertFails(getDocs(collection(b,'rooms',room,'days',day,'attendance')));
- await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'attendance')));
- await assertFails(getDocs(collection(b,'rooms')));await assertFails(deleteDoc(ref(b,'00123')));
- await assertSucceeds(getDocs(query(collection(owner,'rooms'),where('ownerUid','==','teacher'))));
-});
-test('rules validate identity, code, timestamp, and extra fields',async()=>{
- await assertFails(setDoc(ref(a,'bad1'),payload('scannerB','bad1','a'.repeat(36))));
- await assertFails(setDoc(ref(a,'bad2'),payload('scannerA','different','a'.repeat(36))));
- await assertFails(setDoc(ref(a,'bad3'),{...payload('scannerA','bad3','a'.repeat(36)),admin:true}));
- await assertFails(setDoc(ref(a,'bad4'),{...payload('scannerA','bad4','a'.repeat(36)),createdAt:new Date(0)}));
- await assertFails(setDoc(ref(a,'bad5'),{...payload('scannerA','bad5','a'.repeat(36)),scannerName:''}));
- await assertFails(setDoc(ref(a,'bad6'),{...payload('scannerA','bad6','a'.repeat(36)),scannerName:'x'.repeat(81)}));
- await assertSucceeds(setDoc(ref(a,'00234'),payload('scannerA','00234','a'.repeat(36))));
- await assertSucceeds(deleteDoc(ref(owner,'00234')));
-});
-test('anonymous users cannot create rooms or change room ownership',async()=>{
- await assertFails(setDoc(doc(a,'rooms','b'.repeat(48)),{ownerUid:'scannerA',createdAt:serverTimestamp()}));
- await assertFails(setDoc(doc(owner,'rooms',room),{ownerUid:'scannerA',createdAt:serverTimestamp()}));
-});
-test('only owner can name a day; participants can read the name',async()=>{
- const dayRef=doc(owner,'rooms',room,'days',day);
- await assertSucceeds(setDoc(dayRef,{eventName:'Điểm danh Đồ án Nội thất 4',updatedAt:serverTimestamp()}));
- assert.equal((await getDoc(doc(a,'rooms',room,'days',day))).data().eventName,'Điểm danh Đồ án Nội thất 4');
- await assertFails(setDoc(doc(a,'rooms',room,'days',day),{eventName:'Đổi trái phép',updatedAt:serverTimestamp()}));
- await assertFails(setDoc(dayRef,{eventName:'',updatedAt:serverTimestamp()}));
- await assertFails(setDoc(dayRef,{eventName:'x'.repeat(101),updatedAt:serverTimestamp()}));
-});
-test('root scanner mapping is disabled; only event links can be published',async()=>{
- const eventRef=doc(owner,'rooms',room,'days',day,'events',eventId);
- await assertSucceeds(setDoc(eventRef,{eventName:'Ca sáng',day,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
- const ownerDefault=doc(owner,'public','default');
- await assertFails(setDoc(ownerDefault,{room,day,eventId,updatedAt:serverTimestamp()}));
- await assertFails(getDoc(doc(a,'public','default')));
- await assertFails(setDoc(doc(a,'public','default'),{room,day,eventId,updatedAt:serverTimestamp()}));
-});
+import {doc,setDoc,getDoc,deleteDoc,updateDoc,collection,getDocs,query,where,writeBatch,serverTimestamp,Timestamp,runTransaction} from 'firebase/firestore';
 
-test('event link permits scanning while the member list grants delegated management',async()=>{
- const eventRef=doc(owner,'rooms',room,'days',day,'events',eventId),memberRef=doc(owner,'rooms',room,'days',day,'events',eventId,'members',memberHash);
- await assertSucceeds(setDoc(memberRef,{name:memberName,normalized:memberNormal,createdAt:serverTimestamp()}));
- await assertSucceeds(updateDoc(memberRef,{name:'LÊ PHẠM QUỲNH ANH',normalized:memberNormal}));
- await assertFails(updateDoc(doc(a,'rooms',room,'days',day,'events',eventId,'members',memberHash),{name:'Tên giả'}));
- await assertSucceeds(updateDoc(memberRef,{name:memberName,normalized:memberNormal}));
- assert.equal((await getDoc(doc(a,'rooms',room,'days',day,'events',eventId,'members',memberHash))).data().name,memberName);
- await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'members')));
- await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',eventId,'members')));
- await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'attendance')));
- const scan=(uid,mssv,hash=memberHash,name=memberName)=>({mssv,scannedAt:'2026-09-07T10:00:00Z',source:'camera',memberName:name,memberHash:hash,eventId,eventName:'Ca sáng',requestId:'d'.repeat(36),uid,createdAt:serverTimestamp()});
- const ordinary=doc(b,'rooms',room,'days',day,'events',eventId,'attendance','12000001');
- await assertSucceeds(setDoc(ordinary,scan('scannerB','12000001','f'.repeat(64),'Người quét thường')));
- await assertFails(deleteDoc(ordinary));
- const accessA=doc(a,'rooms',room,'days',day,'events',eventId,'access','scannerA');
- await assertFails(setDoc(doc(b,'rooms',room,'days',day,'events',eventId,'access','scannerB'),{uid:'scannerB',memberHash:'f'.repeat(64),memberName:'Người lạ',grantedAt:serverTimestamp()}));
- await assertSucceeds(setDoc(accessA,{uid:'scannerA',memberHash,memberName,grantedAt:serverTimestamp()}));
- await assertSucceeds(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'attendance')));
- await assertFails(getDocs(collection(b,'rooms',room,'days',day,'events',eventId,'attendance')));
- await assertSucceeds(deleteDoc(doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12000001')));
- const attendance=doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12300325');
- await assertSucceeds(setDoc(attendance,scan('scannerA','12300325')));
- await assertFails(setDoc(doc(a,'rooms',room,'days',day,'events',eventId,'attendance','12300326'),scan('scannerA','12300326','f'.repeat(64),'')));
- await assertSucceeds(deleteDoc(attendance));
- await assertFails(deleteDoc(doc(a,'rooms',room,'days',day,'events',eventId)));
- await assertFails(deleteDoc(doc(a,'rooms',room,'days',day,'events',eventId,'members',memberHash)));
- const event2='22222222-2222-4222-8222-222222222222';
- await assertSucceeds(setDoc(doc(owner,'rooms',room,'days',day,'events',event2),{eventName:'Ca chiều',day,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
- await assertSucceeds(setDoc(doc(a,'rooms',room,'days',day,'events',event2,'attendance','12300325'),{...scan('scannerA','12300325'),eventId:event2,eventName:'Ca chiều'}));
- await assertFails(getDocs(collection(a,'rooms',room,'days',day,'events',event2,'attendance')));
- await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',event2,'attendance')));
- await assertSucceeds(setDoc(doc(owner,'publicEvents',eventId),{room,day,eventId,updatedAt:serverTimestamp()}));
- assert.equal((await getDoc(doc(b,'publicEvents',eventId))).data().eventId,eventId);
- const shortCode='abc123def4';await assertSucceeds(setDoc(doc(owner,'publicEvents',shortCode),{room,day,eventId,updatedAt:serverTimestamp()}));
- assert.equal((await getDoc(doc(b,'publicEvents',shortCode))).data().eventId,eventId);
-});
+const room='a'.repeat(48),day='2026-09-09';let env,owner,subA,subB,senior,manager,scanner;
+const contexts={owner:['teacher','teacher@example.com'],subA:['subA','a@example.com'],subB:['subB','b@example.com'],senior:['senior','senior@example.com'],manager:['manager','manager@example.com']};
+const auth=(uid,email)=>env.authenticatedContext(uid,{email,firebase:{sign_in_provider:'google.com'}}).firestore();
+const life=()=>({status:'open',closedByUid:'',closedByLevel:'',closedAt:null,endDay:'2026-09-11',endAt:Timestamp.fromMillis(Date.now()+2*86400000),reopenUntil:Timestamp.fromMillis(Date.now()+9*86400000)});
+const eventData=(uid,email,name)=>({eventName:name,day,createdByUid:uid,createdByEmail:email,createdByName:name,...life(),createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+async function addAdmin(email,name,role='sub',can=false){const data={email,name,role,canManageSubAdmins:can,addedByUid:'teacher',addedAt:serverTimestamp()};const batch=writeBatch(owner);batch.set(doc(owner,'rooms',room,'admins',email),data);batch.set(doc(owner,'adminAccess',email),{...data,room});await assertSucceeds(batch.commit());}
+async function createEvent(db,id,uid,email,name){const batch=writeBatch(db);batch.set(doc(db,'rooms',room,'days',day,'events',id),eventData(uid,email,name));batch.set(doc(db,'publicEvents',id),{room,day,eventId:id,createdByUid:uid,updatedAt:serverTimestamp()});await assertSucceeds(batch.commit());}
 
-test('event photo is visible only to its uploader and owner',async()=>{
- const id='33333333-3333-4333-8333-333333333333',imageData='data:image/jpeg;base64,'+'A'.repeat(120);
- const photo=db=>doc(db,'rooms',room,'days',day,'events',eventId,'unread',id);
- await assertSucceeds(setDoc(photo(a),{imageData,takenAt:'2026-09-07T10:05:00Z',memberName,memberHash,eventId,eventName:'Ca sáng',uid:'scannerA',createdAt:serverTimestamp()}));
- await assertSucceeds(getDoc(photo(a)));await assertFails(getDoc(photo(b)));
- await assertSucceeds(getDocs(collection(a,'rooms',room,'days',day,'events',eventId,'unread')));
- await assertFails(getDocs(collection(b,'rooms',room,'days',day,'events',eventId,'unread')));
- await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'events',eventId,'unread')));
- await assertSucceeds(updateDoc(photo(a),{mssv:'12300325'}));
- await assertFails(updateDoc(photo(b),{mssv:'12300326'}));
- await assertFails(updateDoc(photo(a),{mssv:'SAI'}));
- await assertFails(updateDoc(photo(a),{imageData:'data:image/jpeg;base64,'+'B'.repeat(120)}));
- await assertSucceeds(updateDoc(photo(owner),{mssv:'12300326'}));
- const idB='44444444-4444-4444-8444-444444444444',photoB=db=>doc(db,'rooms',room,'days',day,'events',eventId,'unread',idB);
- await assertSucceeds(setDoc(photoB(b),{imageData,takenAt:'2026-09-07T10:06:00Z',memberName:'Người quét thường',memberHash:'f'.repeat(64),eventId,eventName:'Ca sáng',uid:'scannerB',createdAt:serverTimestamp()}));
- const ownQuery=query(collection(b,'rooms',room,'days',day,'events',eventId,'unread'),where('uid','==','scannerB'));
- assert.equal((await assertSucceeds(getDocs(ownQuery))).size,1);
- await assertFails(deleteDoc(photo(a)));
- await assertSucceeds(deleteDoc(photo(owner)));
- await assertSucceeds(deleteDoc(photoB(owner)));
- const accessRef=doc(a,'rooms',room,'days',day,'events',eventId,'access','scannerA');
- await assertFails(deleteDoc(doc(b,'rooms',room,'days',day,'events',eventId,'access','scannerA')));
- await assertSucceeds(deleteDoc(accessRef));
-});
-test('scanner can upload and view their own photo; only owner can list or delete it',async()=>{
- const id='12345678-1234-1234-1234-123456789abc';
- const photoRef=db=>doc(db,'rooms',room,'days',day,'unread',id);
- const imageData='data:image/jpeg;base64,'+'A'.repeat(120);
- await assertSucceeds(setDoc(photoRef(a),{imageData,scannerName:'Người quét A',takenAt:'2026-09-07T09:10:00Z',uid:'scannerA',createdAt:serverTimestamp()}));
- assert.equal((await assertSucceeds(getDoc(photoRef(a)))).data().uid,'scannerA');
- await assertFails(getDoc(photoRef(b)));
- await assertFails(getDocs(collection(a,'rooms',room,'days',day,'unread')));
- assert.equal((await getDoc(photoRef(owner))).data().scannerName,'Người quét A');
- await assertSucceeds(getDocs(collection(owner,'rooms',room,'days',day,'unread')));
- await assertFails(setDoc(doc(a,'rooms',room,'days',day,'unread','22345678-1234-1234-1234-123456789abc'),{imageData:'not-an-image',scannerName:'A',takenAt:'2026-09-07T09:10:00Z',uid:'scannerA',createdAt:serverTimestamp()}));
- await assertSucceeds(deleteDoc(photoRef(owner)));
-});
-test('owner manages admins; admin operates events but only deletes own events',async()=>{
- const email='admin@example.com',admin=env.authenticatedContext('adminUid',{email,firebase:{sign_in_provider:'google.com'}}).firestore(),other=env.authenticatedContext('otherUid',{email:'other@example.com',firebase:{sign_in_provider:'google.com'}}).firestore();
- const adminRef=doc(owner,'rooms',room,'admins',email);
- await assertSucceeds(setDoc(adminRef,{email,name:'Quản trị viên',addedByUid:'teacher',addedAt:serverTimestamp()}));
- const accessRef=doc(owner,'adminAccess',email),accessData={email,room,name:'Quản trị viên',addedByUid:'teacher',addedAt:serverTimestamp()};
- await assertSucceeds(setDoc(accessRef,accessData));
- assert.equal((await assertSucceeds(getDoc(doc(admin,'adminAccess',email)))).data().room,room);
- await assertFails(getDoc(doc(other,'adminAccess',email)));
- await assertFails(getDocs(collection(admin,'adminAccess')));
- // Nested admin rules intentionally do not expose a collection-group directory.
- // Login discovers the room through the private adminAccess document instead.
- await assertFails(getDocs(query(collectionGroup(admin,'admins'),where('email','==',email))));
- await assertFails(setDoc(doc(admin,'rooms',room,'admins','other@example.com'),{email:'other@example.com',name:'Khác',addedByUid:'adminUid',addedAt:serverTimestamp()}));
- await assertFails(deleteDoc(doc(admin,'rooms',room,'admins',email)));
- const ownEvent='5555555555',ownerEvent='66666666-6666-4666-8666-666666666666';
- const ownRef=doc(admin,'rooms',room,'days',day,'events',ownEvent),ownerRef=doc(owner,'rooms',room,'days',day,'events',ownerEvent);
- await assertSucceeds(setDoc(ownRef,{eventName:'Sự kiện admin',day,createdByUid:'adminUid',createdByEmail:email,createdByName:'Quản trị viên',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
- await assertSucceeds(setDoc(ownerRef,{eventName:'Sự kiện GV',day,createdByUid:'teacher',createdByEmail:'teacher@example.com',createdByName:'Trần Quang Hải',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
- await assertSucceeds(updateDoc(ownRef,{eventName:'Admin cập nhật',updatedAt:serverTimestamp()}));
- await assertSucceeds(setDoc(doc(admin,'publicEvents',ownEvent),{room,day,eventId:ownEvent,updatedAt:serverTimestamp()}));
- await assertSucceeds(getDocs(query(collection(admin,'publicEvents'),where('room','==',room))));
- await assertFails(deleteDoc(doc(admin,'rooms',room,'days',day,'events',ownerEvent)));
- await assertSucceeds(deleteDoc(ownRef));
- await assertSucceeds(deleteDoc(doc(admin,'publicEvents',ownEvent)));
- await assertSucceeds(deleteDoc(ownerRef));
- await assertSucceeds(deleteDoc(accessRef));
- await assertSucceeds(deleteDoc(adminRef));
-});
+before(async()=>{env=await initializeTestEnvironment({projectId:'demo-attendance',firestore:{host:'127.0.0.1',port:8088,rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});owner=auth(...contexts.owner);await setDoc(doc(owner,'rooms',room),{ownerUid:'teacher',createdAt:serverTimestamp()});await addAdmin('a@example.com','Sub A');await addAdmin('b@example.com','Sub B');await addAdmin('senior@example.com','Admin cao','senior',false);await addAdmin('manager@example.com','Admin cao quyền cấp','senior',true);subA=auth(...contexts.subA);subB=auth(...contexts.subB);senior=auth(...contexts.senior);manager=auth(...contexts.manager);scanner=env.authenticatedContext('scan1',{firebase:{sign_in_provider:'anonymous'}}).firestore();});
+after(async()=>env?.cleanup());
+
+test('Sub Admin chỉ liệt kê và xóa sự kiện do chính mình tạo',async()=>{await createEvent(subA,'1111111111','subA','a@example.com','Sự kiện A');await createEvent(subB,'2222222222','subB','b@example.com','Sự kiện B');const own=query(collection(subA,'rooms',room,'days',day,'events'),where('createdByUid','==','subA'));assert.equal((await assertSucceeds(getDocs(own))).size,1);await assertFails(getDocs(collection(subA,'rooms',room,'days',day,'events')));await assertFails(deleteDoc(doc(subA,'rooms',room,'days',day,'events','2222222222')));await assertSucceeds(deleteDoc(doc(subA,'rooms',room,'days',day,'events','1111111111')));});
+
+test('Admin cấp cao xem và xóa mọi sự kiện',async()=>{assert.equal((await assertSucceeds(getDocs(collection(senior,'rooms',room,'days',day,'events')))).size,1);await createEvent(subA,'3333333333','subA','a@example.com','Sự kiện mới');await assertSucceeds(deleteDoc(doc(senior,'rooms',room,'days',day,'events','3333333333')));});
+
+test('chỉ Admin cấp cao có dấu cấp quyền mới thêm/xóa được Sub Admin',async()=>{const email='new@example.com',data={email,name:'New',role:'sub',canManageSubAdmins:false,addedByUid:'manager',addedAt:serverTimestamp()};await assertFails(setDoc(doc(senior,'rooms',room,'admins',email),{...data,addedByUid:'senior'}));const batch=writeBatch(manager);batch.set(doc(manager,'rooms',room,'admins',email),data);batch.set(doc(manager,'adminAccess',email),{...data,room});await assertSucceeds(batch.commit());await assertFails(setDoc(doc(manager,'rooms',room,'admins','x@example.com'),{email:'x@example.com',name:'X',role:'senior',canManageSubAdmins:false,addedByUid:'manager',addedAt:serverTimestamp()}));await assertSucceeds(deleteDoc(doc(manager,'rooms',room,'admins',email)));});
+
+test('Sub Admin không mở lại sự kiện do Admin cấp cao kết thúc',async()=>{const ref=doc(subB,'rooms',room,'days',day,'events','2222222222');await assertSucceeds(updateDoc(ref,{status:'closed',closedByUid:'subB',closedByLevel:'sub',closedAt:serverTimestamp(),updatedAt:serverTimestamp()}));await assertSucceeds(updateDoc(ref,{status:'open',closedByUid:'',closedByLevel:'',closedAt:null,updatedAt:serverTimestamp()}));await assertSucceeds(updateDoc(doc(senior,'rooms',room,'days',day,'events','2222222222'),{status:'closed',closedByUid:'senior',closedByLevel:'senior',closedAt:serverTimestamp(),updatedAt:serverTimestamp()}));await assertFails(updateDoc(ref,{status:'open',closedByUid:'',closedByLevel:'',closedAt:null,updatedAt:serverTimestamp()}));await assertSucceeds(updateDoc(doc(senior,'rooms',room,'days',day,'events','2222222222'),{status:'open',closedByUid:'',closedByLevel:'',closedAt:null,updatedAt:serverTimestamp()}));});
+
+test('danh sách đăng ký chỉ staff sự kiện được tải lên',async()=>{const roster=doc(subB,'rooms',room,'days',day,'events','2222222222','roster','12300325');await assertSucceeds(setDoc(roster,{mssv:'12300325',name:'Nguyễn Văn A',uploadedAt:serverTimestamp()}));await assertFails(setDoc(doc(scanner,'rooms',room,'days',day,'events','2222222222','roster','12300326'),{mssv:'12300326',name:'Nguyễn Văn B',uploadedAt:serverTimestamp()}));});
+
+test('ảnh nhập MSSV tạo lượt điểm danh có liên kết ảnh',async()=>{const id='44444444-4444-4444-8444-444444444444',eventId='2222222222',memberName='Người quét',memberHash=createHash('sha256').update('nguoi quet').digest('hex'),photo=doc(scanner,'rooms',room,'days',day,'events',eventId,'unread',id),scan=doc(scanner,'rooms',room,'days',day,'events',eventId,'attendance','12300325'),imageData='data:image/jpeg;base64,'+'A'.repeat(120);await assertSucceeds(setDoc(photo,{imageData,takenAt:new Date().toISOString(),memberName,memberHash,eventId,eventName:'Sự kiện B',uid:'scan1',createdAt:serverTimestamp()}));const result=await assertSucceeds(runTransaction(scanner,async tx=>{const p=await tx.get(photo),takenAt=p.data().takenAt;tx.update(photo,{mssv:'12300325'});tx.set(scan,{mssv:'12300325',scannedAt:takenAt,source:'photo',photoId:id,memberName,memberHash,eventId,eventName:'Sự kiện B',requestId:id,uid:'scan1',createdAt:serverTimestamp()});}));assert.ok(result===undefined);assert.equal((await getDoc(scan)).data().photoId,id);});
