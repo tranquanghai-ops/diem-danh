@@ -1,4 +1,4 @@
-# Kết nối Firebase cho IFA+ Check-in V1.5.6
+# Kết nối Firebase cho IFA+ Check-in V1.5.7
 
 Thiết lập **một lần bằng tài khoản Google của giảng viên**. Sinh viên quét bằng liên kết riêng của sự kiện; trang chính dùng để tra cứu lịch sử điểm danh bằng email trường. Website vẫn ở địa chỉ hiện tại; không phải chuyển sang Firebase Hosting.
 
@@ -33,12 +33,12 @@ ifa.tdtu.edu.vn
 
 - Vào **Project settings → General → Your apps**, chọn biểu tượng **Web `</>`**.
 - Đặt tên ứng dụng `IFA+ Check-in`, chọn **Register app**. Không cần bật Hosting.
-- Cấu hình Web của dự án `ifa-checkin` đã được lưu sẵn trong ứng dụng IFA+ Check-in V1.5.6.
+- Cấu hình Web của dự án `ifa-checkin` đã được lưu sẵn trong ứng dụng IFA+ Check-in V1.5.7.
 - Đây là cấu hình Web công khai của ứng dụng; **không lấy tệp Service Account hoặc private key**.
 
 ## 5. Kết nối ứng dụng
 
-- Mở [trang quản lý](https://tranquanghai-ops.github.io/ifa-checkin/admin/), kiểm tra **IFA+ Check-in V1.5.6**.
+- Mở [trang quản lý](https://tranquanghai-ops.github.io/ifa-checkin/admin/), kiểm tra **IFA+ Check-in V1.5.7**.
 - Nhấn **Đăng nhập Google**, chọn `tranquanghai@tdtu.edu.vn`. Lần đầu, ứng dụng tự khởi tạo không gian mới và cấp quyền **Chủ sở hữu** cho tài khoản này. Không cần dán lại `firebaseConfig`.
 - Mở tab **Tạo sự kiện**, nhập tên, ngày tổ chức; địa điểm và giờ có thể để trống để bổ sung sau. Có thể chọn luôn Excel/CSV danh sách sinh viên đã đăng ký trước sự kiện.
 - Nút **Sao chép link sự kiện** tạo liên kết theo tên, ví dụ `?e=SINH-HOAT-CONG-DAN`, để gửi sinh viên. Nếu trùng tên, hệ thống tự thêm `-2`, `-3`… Trang chính `https://tranquanghai-ops.github.io/ifa-checkin/` không cho phép quét.
@@ -72,7 +72,7 @@ ifa.tdtu.edu.vn
 ## Danh sách SV khoa và trang tra cứu
 
 - Chủ sở hữu hoặc Admin cấp cao mở **Danh sách SV khoa** trên trang quản lý để nhập Excel/CSV, thêm hoặc cập nhật MSSV, họ tên, giới tính, ngành, lớp; xóa từng sinh viên và xuất lại Excel.
-- V1.5.6 không tải danh sách SV khi Admin đăng nhập. Giữ **Tất cả ngành** hoặc chọn ngành/lớp rồi bấm **Lấy danh sách**; hệ thống chỉ tải nhóm được yêu cầu. Nút **Tìm kiếm** đọc trực tiếp hồ sơ khi nhập chính xác MSSV, còn tìm theo họ tên sử dụng chỉ mục danh sách đã tạo.
+- V1.5.7 không tải danh sách SV khi Admin đăng nhập. Giữ **Tất cả ngành** hoặc chọn ngành/lớp rồi bấm **Lấy danh sách**; hệ thống chỉ tải nhóm được yêu cầu. Nút **Tìm kiếm** đọc trực tiếp hồ sơ khi nhập chính xác MSSV, còn tìm theo họ tên sử dụng chỉ mục danh sách đã tạo.
 - Tệp nhập cần có cột `Mã SV` hoặc `MSSV`; tên có thể nằm trong cột `Họ tên`, hoặc tách thành `Họ lót` và `Tên`. Các cột `Giới tính`, `Ngành`, `Lớp` được lưu để Admin quản lý nhưng không hiển thị trong danh sách điểm danh. Nhập lại tệp chỉ bổ sung/cập nhật, không tự xóa danh sách cũ.
 - Khi quét, ứng dụng đối chiếu MSSV với danh sách này và hiển thị họ tên. MSSV ngoài danh sách hiện **Không có dữ liệu tên**.
 - Mỗi sinh viên trong danh sách được ánh xạ tới email `mssv@student.tdtu.edu.vn`. Sinh viên mở [trang tra cứu](https://tranquanghai-ops.github.io/ifa-checkin/), đăng nhập đúng email trường và chỉ xem được lịch sử của chính mình.
