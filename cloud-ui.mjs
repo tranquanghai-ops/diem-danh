@@ -1,5 +1,5 @@
-import {FirebaseAttendance} from './firebase-sync.mjs?v=1.5.4';
-import {DEFAULT_FIREBASE_CONFIG} from './firebase-config.mjs';
+import {FirebaseAttendance} from './firebase-sync.mjs?v=1.5.5';
+import {DEFAULT_FIREBASE_CONFIG} from './firebase-config.mjs?v=1.5.5';
 const $=id=>document.getElementById(id),ui=window.attendanceUI;
 const SCANNER_NAME_KEY='attendance_scanner_name_v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

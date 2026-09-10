@@ -41,7 +41,7 @@ service cloud.firestore {
   }
   match /rooms/{room}{
    allow get:if signedIn()&&vr(room);allow list:if google()&&resource.data.ownerUid==request.auth.uid;
-   allow create:if google()&&vr(room)&&request.resource.data.keys().hasAll(['ownerUid','createdAt'])&&request.resource.data.keys().hasOnly(['ownerUid','createdAt'])&&request.resource.data.ownerUid==request.auth.uid&&request.resource.data.createdAt==request.time;allow update,delete:if false;
+   allow create:if google()&&request.auth.token.email=='tranquanghai@tdtu.edu.vn'&&vr(room)&&request.resource.data.keys().hasAll(['ownerUid','createdAt'])&&request.resource.data.keys().hasOnly(['ownerUid','createdAt'])&&request.resource.data.ownerUid==request.auth.uid&&request.resource.data.createdAt==request.time;allow update,delete:if false;
    match /admins/{email}{
     function valid(){return request.resource.data.keys().hasAll(['email','name','role','canManageSubAdmins','addedByUid','addedAt'])&&request.resource.data.keys().hasOnly(['email','name','role','canManageSubAdmins','addedByUid','addedAt'])&&request.resource.data.email==email&&request.resource.data.name is string&&request.resource.data.name.size()<=100&&request.resource.data.role in ['senior','sub']&&request.resource.data.canManageSubAdmins is bool&&(request.resource.data.role=='senior'||request.resource.data.canManageSubAdmins==false)&&request.resource.data.addedByUid==request.auth.uid&&request.resource.data.addedAt==request.time;}
     allow get:if owner(room)||(google()&&request.auth.token.email==email);allow list:if owner(room)||(manageSubs(room)&&resource.data.role=='sub');

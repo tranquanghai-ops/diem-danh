@@ -6,7 +6,7 @@ import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/ru
 import {doc,setDoc,getDoc,deleteDoc,updateDoc,collection,collectionGroup,getDocs,query,where,writeBatch,serverTimestamp,Timestamp,runTransaction} from 'firebase/firestore';
 
 const room='a'.repeat(48),day='2026-09-09';let env,owner,subA,subB,senior,manager,scanner;
-const contexts={owner:['teacher','teacher@example.com'],subA:['subA','a@example.com'],subB:['subB','b@example.com'],senior:['senior','senior@example.com'],manager:['manager','manager@example.com']};
+const contexts={owner:['teacher','tranquanghai@tdtu.edu.vn'],subA:['subA','a@example.com'],subB:['subB','b@example.com'],senior:['senior','senior@example.com'],manager:['manager','manager@example.com']};
 const auth=(uid,email)=>env.authenticatedContext(uid,{email,firebase:{sign_in_provider:'google.com'}}).firestore();
 const life=()=>({status:'open',closedByUid:'',closedByLevel:'',closedAt:null,endDay:'2026-09-11',endAt:Timestamp.fromMillis(Date.now()+2*86400000),reopenUntil:Timestamp.fromMillis(Date.now()+9*86400000)});
 const eventData=(uid,email,name)=>({eventName:name,shareCode:name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').replace(/[^a-z0-9]+/gi,'-').toUpperCase(),day,location:'Hội trường 6B',startTime:'08:00',endTime:'10:00',createdByUid:uid,createdByEmail:email,createdByName:name,...life(),createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
