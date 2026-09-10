@@ -1,4 +1,4 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.5.3';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.5.4';
 import {vietnamDay} from '../sync-core.mjs';
 import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs';
 
