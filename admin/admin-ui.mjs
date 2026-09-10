@@ -1,6 +1,6 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.5.5';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.5.6';
 import {vietnamDay} from '../sync-core.mjs';
-import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs?v=1.5.5';
+import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs?v=1.5.6';
 
 const $=id=>document.getElementById(id);
 const cloud=new FirebaseAttendance({scannerUrl:'../',change:render});
@@ -19,15 +19,15 @@ function roleText(a){return a.role==='senior'?'Admin cấp cao'+(a.canManageSubA
 function updateStudentFilter(id,values,label){const select=$(id),current=select.value,options=[`<option value="">${label}</option>`,...values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`)].join('');if(select.innerHTML!==options)select.innerHTML=options;if(values.includes(current))select.value=current;}
 function renderStudents(){
   const all=cloud.students||[],groups=cloud.studentDirectory?.groups||[],sort=(a,b)=>a.localeCompare(b,'vi',{numeric:true});
-  updateStudentFilter('studentMajorFilter',[...new Set(groups.filter(x=>x.type==='major').map(x=>x.label))].sort(sort),'Chọn ngành');
+  updateStudentFilter('studentMajorFilter',[...new Set(groups.filter(x=>x.type==='major').map(x=>x.label))].sort(sort),'Tất cả ngành');
   const major=$('studentMajorFilter').value;
-  updateStudentFilter('studentClassFilter',[...new Set(groups.filter(x=>x.type==='class'&&(!major||x.major===major)).map(x=>x.label))].sort(sort),'Chọn lớp');
+  updateStudentFilter('studentClassFilter',[...new Set(groups.filter(x=>x.type==='class'&&(!major||x.major===major)).map(x=>x.label))].sort(sort),'Tất cả lớp');
   const studentClass=$('studentClassFilter').value,q=String($('studentSearch').value||'').trim().toLocaleLowerCase('vi-VN'),active=cloud.studentGroupLoaded;
   let filtered=active?all.filter(x=>!q||[x.mssv,x.name].some(v=>String(v||'').toLocaleLowerCase('vi-VN').includes(q))):[];
   const pageSize=[15,30,50,100].includes(Number($('studentPageSize').value))?Number($('studentPageSize').value):15,totalPages=Math.max(1,Math.ceil(filtered.length/pageSize));studentPage=Math.min(Math.max(1,studentPage),totalPages);
   const rows=filtered.slice((studentPage-1)*pageSize,studentPage*pageSize);
-  $('studentCount').textContent=(cloud.studentDirectory?.count||0)+' sinh viên';$('studentPrompt').hidden=active;$('studentTableWrap').hidden=!active;$('studentEmpty').hidden=!!filtered.length;$('loadStudentListBtn').disabled=!major&&!studentClass;
-  $('studentPrompt').textContent=groups.length?'Chọn ngành hoặc lớp rồi bấm “Lấy danh sách”.':'Chưa có chỉ mục ngành/lớp. Vui lòng nhập lại file danh sách sinh viên một lần.';
+  $('studentCount').textContent=(cloud.studentDirectory?.count||0)+' sinh viên';$('studentPrompt').hidden=active;$('studentTableWrap').hidden=!active;$('studentEmpty').hidden=!!filtered.length;$('loadStudentListBtn').disabled=!groups.length;
+  $('studentPrompt').textContent=groups.length?'Giữ “Tất cả ngành” hoặc chọn ngành/lớp, rồi bấm “Lấy danh sách”.':'Chưa có chỉ mục ngành/lớp. Vui lòng nhập file danh sách sinh viên.';
   $('studentRows').innerHTML=rows.map(x=>`<tr><td><b>${esc(x.mssv)}</b></td><td>${esc(x.name)}</td><td>${esc(x.gender||'—')}</td><td>${esc(x.major||'—')}</td><td>${esc(x.studentClass||'—')}</td><td><button class="danger" data-remove-student="${esc(x.mssv)}">Xóa</button></td></tr>`).join('');
   $('studentPagination').hidden=!active||filtered.length<=pageSize;$('studentPageInfo').textContent=`Trang ${studentPage}/${totalPages} • ${filtered.length} sinh viên`;$('studentPrevPage').disabled=studentPage<=1;$('studentNextPage').disabled=studentPage>=totalPages;
 }
@@ -109,7 +109,8 @@ function parseStudents(data){
 $('rosterFile').onchange=async()=>{const file=$('rosterFile').files[0];if(!file)return;await action(async()=>{const rows=parseStudents(await file.arrayBuffer());if(!confirm(`Tìm thấy ${rows.length} sinh viên. Thay danh sách đăng ký hiện tại?`))return;await cloud.replaceRoster(rows);})();$('rosterFile').value='';};
 $('studentFile').onchange=async()=>{const file=$('studentFile').files[0];if(!file)return;await action(async()=>{const rows=parseStudents(await file.arrayBuffer());if(!confirm(`Tìm thấy ${rows.length} sinh viên. Dữ liệu sẽ được bổ sung/cập nhật và dùng để tạo lại chỉ mục ngành, lớp.`))return;await cloud.mergeStudents(rows);})();$('studentFile').value='';};
 $('addStudentBtn').onclick=action(async()=>{await cloud.mergeStudents([{mssv:$('studentMssv').value,name:$('studentName').value,gender:$('studentGender').value,major:$('studentMajor').value,studentClass:$('studentClass').value}]);for(const id of ['studentMssv','studentName','studentGender','studentMajor','studentClass'])$(id).value='';});
-$('studentSearch').oninput=()=>{studentPage=1;renderStudents();};
+$('searchStudentBtn').onclick=action(async()=>{studentPage=1;await cloud.searchStudents($('studentSearch').value);});
+$('studentSearch').onkeydown=e=>{if(e.key==='Enter')$('searchStudentBtn').click();};
 $('studentMajorFilter').onchange=()=>{studentPage=1;cloud.clearStudentGroup();};$('studentClassFilter').onchange=()=>{studentPage=1;cloud.clearStudentGroup();};$('studentPageSize').onchange=()=>{studentPage=1;renderStudents();};
 $('loadStudentListBtn').onclick=action(()=>cloud.loadStudentGroup({major:$('studentMajorFilter').value,studentClass:$('studentClassFilter').value}));
 $('resetStudentFilters').onclick=()=>{$('studentSearch').value='';$('studentMajorFilter').value='';$('studentClassFilter').value='';studentPage=1;cloud.clearStudentGroup();};

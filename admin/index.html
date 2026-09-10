@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f172a">
-  <title>IFA+ Check-in • Quản lý V1.5.5</title>
+  <title>IFA+ Check-in • Quản lý V1.5.6</title>
   <style>
     :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--primary:#2563eb;--success:#16a34a;--danger:#dc2626}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.app{max-width:1050px;margin:auto;padding:18px}
@@ -43,10 +43,10 @@
       <div class="panel-heading"><h2>Danh sách SV khoa</h2></div>
       <div class="group-content">
       <div class="between"><div><p class="note" style="margin:0">Chủ sở hữu và Admin cấp cao được bổ sung, xuất hoặc xóa sinh viên.</p></div><div class="buttons"><label class="button primary" for="studentFile">↑ Nhập Excel / CSV</label><input id="studentFile" type="file" accept=".xlsx,.xls,.csv" hidden><button id="exportStudentsBtn" class="success">↓ Xuất Excel</button></div></div>
-      <div class="form-grid"><div><label for="studentMssv">MSSV</label><input id="studentMssv" maxlength="12" autocapitalize="characters" placeholder="12300325"></div><div><label for="studentName">Họ và tên</label><input id="studentName" maxlength="150" placeholder="Nguyễn Văn A"></div><div><label for="studentGender">Giới tính</label><input id="studentGender" maxlength="30" placeholder="Nam / Nữ"></div><div><label for="studentMajor">Ngành</label><input id="studentMajor" maxlength="120" placeholder="Thiết kế nội thất"></div><div><label for="studentClass">Lớp</label><input id="studentClass" maxlength="80" placeholder="Ví dụ: 230H0101"></div><div style="align-self:end"><button id="addStudentBtn" class="primary">Thêm / cập nhật</button></div></div>
-      <div class="between" style="margin-top:12px"><label for="studentSearch" style="margin:0">Tìm sinh viên</label><b id="studentCount">0 sinh viên</b></div><input id="studentSearch" placeholder="Nhập MSSV hoặc họ tên" style="margin:6px 0 0">
-      <div class="student-filters"><div><label for="studentMajorFilter">Hiển thị theo ngành</label><select id="studentMajorFilter"><option value="">Chọn ngành</option></select></div><div><label for="studentClassFilter">Hiển thị theo lớp</label><select id="studentClassFilter"><option value="">Chọn lớp</option></select></div><div class="page-size-wrap"><label for="studentPageSize">Số tên mỗi trang</label><select id="studentPageSize"><option value="15" selected>15 tên</option><option value="30">30 tên</option><option value="50">50 tên</option><option value="100">100 tên</option></select></div><button id="loadStudentListBtn" class="primary" type="button">Lấy danh sách</button><button id="resetStudentFilters" type="button">Xóa bộ lọc</button></div>
-      <p id="studentPrompt" class="note student-prompt">Chọn ngành hoặc lớp rồi bấm “Lấy danh sách”.</p>
+      <div class="form-grid"><div><label for="studentMssv">MSSV</label><input id="studentMssv" maxlength="12" autocapitalize="characters" placeholder="12300325"></div><div><label for="studentName">Họ và tên</label><input id="studentName" maxlength="150" placeholder="Nguyễn Văn A"></div><div><label for="studentGender">Giới tính</label><select id="studentGender"><option value="">Chọn giới tính</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option><option value="Khác">Khác</option></select></div><div><label for="studentMajor">Ngành</label><select id="studentMajor"><option value="">Chọn ngành</option><option value="Thiết kế đồ họa">Thiết kế đồ họa</option><option value="Thiết kế công nghiệp">Thiết kế công nghiệp</option><option value="Thiết kế nội thất">Thiết kế nội thất</option><option value="Thiết kế thời trang">Thiết kế thời trang</option><option value="Nghệ thuật số">Nghệ thuật số</option></select></div><div><label for="studentClass">Lớp</label><input id="studentClass" maxlength="80" placeholder="Ví dụ: 230H0101"></div><div style="align-self:end"><button id="addStudentBtn" class="primary">Thêm / cập nhật</button></div></div>
+      <div class="between" style="margin-top:12px"><label for="studentSearch" style="margin:0">Tìm sinh viên</label><b id="studentCount">0 sinh viên</b></div><div class="row" style="margin-top:6px"><input id="studentSearch" placeholder="Nhập MSSV hoặc họ tên" style="flex:1"><button id="searchStudentBtn" class="primary" type="button">Tìm kiếm</button></div>
+      <div class="student-filters"><div><label for="studentMajorFilter">Hiển thị theo ngành</label><select id="studentMajorFilter"><option value="">Tất cả ngành</option></select></div><div><label for="studentClassFilter">Hiển thị theo lớp</label><select id="studentClassFilter"><option value="">Tất cả lớp</option></select></div><div class="page-size-wrap"><label for="studentPageSize">Số tên mỗi trang</label><select id="studentPageSize"><option value="15" selected>15 tên</option><option value="30">30 tên</option><option value="50">50 tên</option><option value="100">100 tên</option></select></div><button id="loadStudentListBtn" class="primary" type="button">Lấy danh sách</button><button id="resetStudentFilters" type="button">Xóa bộ lọc</button></div>
+      <p id="studentPrompt" class="note student-prompt">Giữ “Tất cả ngành” hoặc chọn ngành/lớp, rồi bấm “Lấy danh sách”.</p>
       <div id="studentTableWrap" class="table-wrap" style="max-height:none;margin-top:10px" hidden><table><thead><tr><th style="width:130px">MSSV</th><th>Họ và tên</th><th>Giới tính</th><th>Ngành</th><th>Lớp</th><th style="width:75px">Xóa</th></tr></thead><tbody id="studentRows"></tbody></table><p id="studentEmpty" class="note" style="text-align:center">Không tìm thấy sinh viên phù hợp.</p></div>
       <div id="studentPagination" class="pagination" hidden><button id="studentPrevPage" type="button">← Trang trước</button><b id="studentPageInfo">Trang 1/1</b><button id="studentNextPage" type="button">Trang sau →</button></div>
     
@@ -92,7 +92,7 @@
     </section>
   </div>
     </div>
-  <footer><div>IFA+ Check-in • Quản lý • V1.5.5</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>IFA+ Check-in • Quản lý • V1.5.6</div><div>Built by Trần Quang Hải</div></footer>
 </main>
 
 <dialog id="imageViewerDialog"><div class="modal"><div class="between"><h2>Xem hình chụp</h2><button id="closeImageViewer">Đóng</button></div><div class="image-stage"><img id="viewerImage" alt="Hình thẻ đã chụp"></div><div class="buttons"><button id="zoomOut">− Thu nhỏ</button><button id="zoomReset">100%</button><button id="zoomIn">＋ Phóng to</button></div></div></dialog>
@@ -122,5 +122,5 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module" src="./admin-ui.mjs?v=1.5.5"></script>
+<script type="module" src="./admin-ui.mjs?v=1.5.6"></script>
 </body></html>
