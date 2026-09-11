@@ -1,6 +1,6 @@
-import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.5.8';
+import {FirebaseAttendance} from '../firebase-sync.mjs?v=1.5.9';
 import {vietnamDay} from '../sync-core.mjs';
-import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs?v=1.5.8';
+import {DEFAULT_FIREBASE_CONFIG} from '../firebase-config.mjs?v=1.5.9';
 
 const $=id=>document.getElementById(id);
 const cloud=new FirebaseAttendance({scannerUrl:'../',change:render});
@@ -93,8 +93,8 @@ $('addAdminBtn').onclick=action(async()=>{await cloud.addAdmin($('adminEmail').v
 $('adminRows').onchange=e=>{const select=e.target.closest('[data-admin-role]');if(!select)return;const check=document.querySelector(`[data-admin-manage="${CSS.escape(select.dataset.adminRole)}"]`);if(check){check.disabled=select.value!=='senior';if(check.disabled)check.checked=false;}};
 $('adminRows').onclick=async e=>{const remove=e.target.closest('[data-remove-admin]'),save=e.target.closest('[data-save-admin]');if(save){const email=save.dataset.saveAdmin,role=document.querySelector(`[data-admin-role="${CSS.escape(email)}"]`).value,canManage=document.querySelector(`[data-admin-manage="${CSS.escape(email)}"]`).checked;await action(()=>cloud.updateAdminRole(email,role,canManage))();}if(remove&&confirm('Xóa quyền admin của '+remove.dataset.removeAdmin+'?'))await action(()=>cloud.removeAdmin(remove.dataset.removeAdmin))();};
 
-$('rows').onclick=async e=>{const image=e.target.closest('[data-view-photo]'),del=e.target.closest('[data-delete-scan]');if(image){const p=cloud.photos.find(x=>x.id===image.dataset.viewPhoto);if(p)viewImage(p.imageData);}if(del&&confirm('Xóa lượt quét MSSV '+del.dataset.deleteScan+'?'))await action(()=>cloud.deleteAttendance(del.dataset.deleteScan))();};
-$('photoRows').onclick=async e=>{const view=e.target.closest('[data-view-photo]'),save=e.target.closest('[data-photo-save]'),del=e.target.closest('[data-photo-delete]');if(view){const p=cloud.photos.find(x=>x.id===view.dataset.viewPhoto);if(p)viewImage(p.imageData);}if(save){const input=document.querySelector(`[data-photo-input="${save.dataset.photoSave}"]`);await action(()=>cloud.resolvePhoto(save.dataset.photoSave,input.value))();}if(del&&confirm('Xóa hình chụp này?'))await action(()=>cloud.deletePhoto(del.dataset.photoDelete))();};
+$('rows').onclick=async e=>{const image=e.target.closest('[data-view-photo]'),del=e.target.closest('[data-delete-scan]');if(image)await action(async()=>viewImage(await cloud.getPhotoImage(image.dataset.viewPhoto)))();if(del&&confirm('Xóa lượt quét MSSV '+del.dataset.deleteScan+'?'))await action(()=>cloud.deleteAttendance(del.dataset.deleteScan))();};
+$('photoRows').onclick=async e=>{const view=e.target.closest('[data-view-photo]'),save=e.target.closest('[data-photo-save]'),del=e.target.closest('[data-photo-delete]');if(view)await action(async()=>viewImage(await cloud.getPhotoImage(view.dataset.viewPhoto)))();if(save){const input=document.querySelector(`[data-photo-input="${save.dataset.photoSave}"]`);await action(()=>cloud.resolvePhoto(save.dataset.photoSave,input.value))();}if(del&&confirm('Xóa hình chụp này?'))await action(()=>cloud.deletePhoto(del.dataset.photoDelete))();};
 function viewImage(src){viewerScale=1;$('viewerImage').src=src;applyZoom();$('imageViewerDialog').showModal();}
 function applyZoom(){viewerScale=Math.max(.5,Math.min(4,viewerScale));$('viewerImage').style.width=(viewerScale*100)+'%';$('zoomReset').textContent=Math.round(viewerScale*100)+'%';}
 $('closeImageViewer').onclick=()=>$('imageViewerDialog').close();$('zoomIn').onclick=()=>{viewerScale+=.25;applyZoom();};$('zoomOut').onclick=()=>{viewerScale-=.25;applyZoom();};$('zoomReset').onclick=()=>{viewerScale=1;applyZoom();};

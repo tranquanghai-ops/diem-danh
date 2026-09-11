@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>IFA+ Check-in V1.5.8</title>
+  <title>IFA+ Check-in V1.5.9</title>
   <style>
     :root{
       --bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
@@ -153,7 +153,7 @@
     <p id="vibrationHint" class="note" role="status"></p>
     <p id="secureHint" class="note"></p>
   </details>
-  <footer><div>IFA+ Check-in • V1.5.8</div><div>Built by Trần Quang Hải</div></footer>
+  <footer><div>IFA+ Check-in • V1.5.9</div><div>Built by Trần Quang Hải</div></footer>
 </div>
 
 <dialog id="manualDialog">
@@ -288,7 +288,7 @@
     $('emptyTable').style.display = rows.length ? 'none' : 'block';
     [...rows].reverse().forEach((r,i)=>{
       const tr = document.createElement('tr');
-      const code=r.kind==='photo'?(validStudentId(r.mssv)?'<b>'+escapeHtml(r.mssv)+'</b><br>':'')+'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Xem hình</button>':r.photoId&&r.imageData?'<button class="photo-link" data-view-photo="'+escapeHtml(r.photoId)+'"><b>'+escapeHtml(r.mssv)+'</b> 🖼️</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
+      const code=r.kind==='photo'?(validStudentId(r.mssv)?'<b>'+escapeHtml(r.mssv)+'</b><br>':'')+'<button class="photo-link" data-view-photo="'+escapeHtml(r.id)+'">Xem hình</button>':r.photoId?'<button class="photo-link" data-view-photo="'+escapeHtml(r.photoId)+'"><b>'+escapeHtml(r.mssv)+'</b> 🖼️</button>':'<b>'+escapeHtml(r.mssv)+'</b>';
       const canManage=window.attendanceCloud?.owner||window.attendanceCloud?.delegated;
       const remove=r.kind==='scan'&&canManage?'<button class="danger" data-delete-scan="'+escapeHtml(r.mssv)+'">Xóa</button>':'—';
       const studentName=window.attendanceCloud?.displayStudentName(r.mssv,r.studentName)||r.studentName||'Không có dữ liệu tên';
@@ -299,14 +299,14 @@
   }
   let viewerScale=1,viewedPhotoId='';
   function applyZoom(){viewerScale=Math.max(.5,Math.min(4,viewerScale));$('viewerImage').style.width=(viewerScale*100)+'%';$('zoomReset').textContent=Math.round(viewerScale*100)+'%';}
-  function viewPhoto(id){
-    const photo=(currentBatch()?.attendance||[]).find(r=>(r.kind==='photo'&&r.id===id)||(r.photoId===id&&r.imageData));if(!photo?.imageData)return;
-    viewedPhotoId=photo.kind==='photo'?id:'';viewerScale=1;$('viewerImage').src=photo.imageData;applyZoom();
+  async function viewPhoto(id){
+    const photo=(currentBatch()?.attendance||[]).find(r=>(r.kind==='photo'&&r.id===id)||r.photoId===id);if(!photo)return;
+    const imageData=await window.attendanceCloud.getPhotoImage(id);viewedPhotoId=photo.kind==='photo'?id:'';viewerScale=1;$('viewerImage').src=imageData;applyZoom();
     const canEdit=photo.uid&&photo.uid===window.attendanceCloud?.auth?.currentUser?.uid;
     $('photoMssvEditor').hidden=!canEdit;$('photoMssv').value=validStudentId(photo.mssv)?photo.mssv:'';
     $('imageViewerDialog').showModal();
   }
-  $('attendanceBody').onclick=e=>{const photo=e.target.closest('[data-view-photo]'),remove=e.target.closest('[data-delete-scan]');if(photo)viewPhoto(photo.dataset.viewPhoto);if(remove&&confirm('Xóa lượt quét MSSV '+remove.dataset.deleteScan+'?'))window.attendanceCloud.deleteAttendance(remove.dataset.deleteScan).catch(error=>setStatus('error','Không xóa được.',error.message));};
+  $('attendanceBody').onclick=e=>{const photo=e.target.closest('[data-view-photo]'),remove=e.target.closest('[data-delete-scan]');if(photo)viewPhoto(photo.dataset.viewPhoto).catch(error=>setStatus('error','Không mở được hình.',error.message));if(remove&&confirm('Xóa lượt quét MSSV '+remove.dataset.deleteScan+'?'))window.attendanceCloud.deleteAttendance(remove.dataset.deleteScan).catch(error=>setStatus('error','Không xóa được.',error.message));};
   $('closeImageViewer').onclick=()=>$('imageViewerDialog').close();
   $('zoomIn').onclick=()=>{viewerScale+=.25;applyZoom();};$('zoomOut').onclick=()=>{viewerScale-=.25;applyZoom();};$('zoomReset').onclick=()=>{viewerScale=1;applyZoom();};
   $('savePhotoMssv').onclick=async()=>{
@@ -622,6 +622,6 @@
   render();
 })();
 </script>
-<script type="module" src="./cloud-ui.mjs?v=1.5.8"></script>
+<script type="module" src="./cloud-ui.mjs?v=1.5.9"></script>
 </body>
 </html>
