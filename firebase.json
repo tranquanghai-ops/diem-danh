@@ -1,4 +1,28 @@
 {
   "firestore": { "rules": "firestore.rules" },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "firestore.rules",
+      "FIREBASE-SETUP.md",
+      "package.json",
+      "package-lock.json",
+      "tests/**",
+      "node_modules/**",
+      ".git/**",
+      ".github/**",
+      "upload/**"
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "**/*.@(js|mjs|css|html)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  },
   "emulators": { "firestore": { "port": 8088 }, "ui": { "enabled": false } }
 }
